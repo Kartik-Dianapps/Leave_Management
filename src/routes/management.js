@@ -8,6 +8,19 @@ const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
 const ObjectId = require("mongodb")
 
+// Management logout
+router.post("/logout", verifyToken, async (req, res) => {
+    try {
+        res.clearCookie("Token");
+        res.status(200);
+        return res.json({ message: "Logout Successfully..." })
+    }
+    catch (error) {
+        console.log(error.message);
+        return res.status(500).json({ message: "Logout Failed..." })
+    }
+})
+
 // to get all past leaves 
 router.get("/pastLeave", verifyToken, async (req, res) => {
 
@@ -105,6 +118,22 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
         console.log(error.message);
         res.status(500);
         return res.json({ message: "Error occurred while approving a leave request..." })
+    }
+})
+
+// to fetch data of all employees
+router.get("/getAllEmployeesDetails", verifyToken, async (req, res) => {
+
+    try {
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { $project: { name: 1, role: 1 } }).sort({ role: 1 })
+
+        res.status(200);
+        return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
+    }
+    catch (error) {
+        console.log(error.message);
+        res.status(500);
+        return res.json({ message: "Error occurred while fetching all details of employees..." })
     }
 })
 
