@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router()
 const bcrypt = require("bcrypt");
 const Employee = require("../Models/Employee.js")
-const Holiday = require("../Models/Holiday.js")
+const { Holiday } = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
@@ -226,7 +226,7 @@ router.get("/currentLeave", verifyToken, async (req, res) => {
             return doc.startDate >= new Date()
         })
         res.status(200)
-        return res.json({ pastLeaveRequests: emp.leaveRequest, message: "Current Leave Requests fetched successfully..." })
+        return res.json({ pastLeaveRequests: arr, message: "Current Leave Requests fetched successfully..." })
 
     }
     catch (error) {
@@ -256,7 +256,7 @@ router.get("/publicHolidays", verifyToken, async (req, res) => {
 router.get("/getAllEmployeesDetails", verifyToken, async (req, res) => {
 
     try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { $project: { name: 1, role: 1 } }).sort({ role: 1 })
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
 
         res.status(200);
         return res.json({ data: docs, message: "All Employees data Fetched successfully..." })

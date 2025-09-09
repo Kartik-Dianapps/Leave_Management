@@ -2,12 +2,11 @@ const express = require("express");
 const router = express.Router()
 const bcrypt = require("bcrypt");
 const Employee = require("../Models/Employee.js")
-const Holiday = require("../Models/Holiday.js")
+const { Holiday } = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
-const ObjectId = require("mongodb")
-
+const { ObjectId } = require("mongodb")
 // HR logout
 router.post("/logout", verifyToken, async (req, res) => {
     try {
@@ -35,7 +34,7 @@ router.get("/employee/:id", verifyToken, async (req, res) => {
         }
 
         res.status(200);
-        return res.json({ message: "Employee Details fetched Successfully..." })
+        return res.json({ Employee: emp, message: "Employee Details fetched Successfully..." })
     }
     catch (error) {
         console.log(error.message);
@@ -64,6 +63,16 @@ router.post("/addPublicHoliday", verifyToken, async (req, res) => {
 
     try {
         let data = req.body;
+
+        let name = data.name;
+        let date = data.date;
+
+        const check = await Holiday.find({ name: name }).collation({ locale: "en", strength: 1 })
+
+        if (check.length !== 0) {
+            res.status(400);
+            return res.json({ message: "Cannot add same name Holiday..." })
+        }
 
         if (name === null || name === undefined || name === "" || name.trim() === "") {
             res.status(400);
@@ -96,6 +105,13 @@ router.patch("/editPublicHoliday/:id", verifyToken, async (req, res) => {
 
         let name = data.name;
         let date = data.date;
+
+        const check = await Holiday.find({ name: name }).collation({ locale: "en", strength: 1 })
+
+        if (check.length !== 0) {
+            res.status(400);
+            return res.json({ message: "This Holiday name is already exists..." })
+        }
 
         const holiday = await Holiday.findById(id);
         if (!holiday) {
