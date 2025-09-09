@@ -9,8 +9,8 @@ const employeeSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        lowercase:true,
-        unique:true
+        lowercase: true,
+        unique: true
     },
     role: {
         type: String,
@@ -20,7 +20,7 @@ const employeeSchema = new mongoose.Schema({
     phone: {
         type: Number,
         required: true,
-        unique:true
+        unique: true
     },
     password: {
         type: String,

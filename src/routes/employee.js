@@ -130,6 +130,7 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
         const data = req.body;
 
         const employee = await Employee.findById(req.userId);
+
         if (!(employee.leaveBalance > 0)) {
             res.status(400)
             return res.json({ message: "Balance is less than 0..." })
@@ -163,6 +164,27 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
         if (data.endDate === null || data.endDate === undefined || data.endDate === "") {
             res.status(400);
             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
+        }
+
+        const holidays = await Holiday.find();
+        let arr = [];
+        holidays.forEach((holiday) => {
+            arr.push(holiday.date.toDateString());
+        })
+
+        // check for an employee apply for leave on public holiday 
+        const start = new Date(data.startDate).toDateString()
+        const end = new Date(data.endDate).toDateString()
+
+        if (arr.includes(start) || arr.includes(end)) {
+            res.status(400);
+            return res.json({ message: "Cannot apply for leave on public holiday..." })
+        }
+
+        // check for week days 
+        if ((start.substring(0, 3) === 'Sun' || start.substring(0, 3) === 'Sat') || (end.substring(0, 3) === 'Sun' || end.substring(0, 3) === 'Sat')) {
+            res.status(400);
+            return res.json({ message: "Cannot apply for leave on week days..." })
         }
 
         if (data.role === null || data.role === undefined || data.role === "" || data.role.trim() === "") {

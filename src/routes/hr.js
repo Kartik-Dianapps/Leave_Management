@@ -7,6 +7,7 @@ const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
 const { ObjectId } = require("mongodb")
+
 // HR logout
 router.post("/logout", verifyToken, async (req, res) => {
     try {
@@ -46,7 +47,7 @@ router.get("/employee/:id", verifyToken, async (req, res) => {
 router.get("/currentLeaveRequests", verifyToken, async (req, res) => {
 
     try {
-        const leaveRequests = await LeaveRequest.find({ startDate: { $gte: new Date() } })
+        const leaveRequests = await LeaveRequest.find({ startDate: { $gte: new Date() }, isApprove: false })
 
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
@@ -110,7 +111,7 @@ router.patch("/editPublicHoliday/:id", verifyToken, async (req, res) => {
 
         if (check.length !== 0) {
             res.status(400);
-            return res.json({ message: "This Holiday name is already exists..." })
+            return res.json({ message: "This Holiday name is already exists give other name..." })
         }
 
         const holiday = await Holiday.findById(id);
@@ -178,17 +179,20 @@ router.post("/approveRequest/:id", verifyToken, async (req, res) => {
         await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
 
         // Step 3 - update balance
-        const doc = Employee.find({ leaveRequest: new ObjectId(id) })
+        const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+        console.log(document);
 
-        doc.leaveBalance -= doc.duration;
+        const sub = document.leaveBalance - leaveReq.duration;
 
-        await doc.save();
+        console.log(sub);
+
+        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
 
         res.status(200)
         return res.json({ message: "Leave Request approved successfully..." })
     }
     catch (error) {
-        console.log(error.message);
+        console.log(error);
         res.status(500);
         return res.json({ message: "Error occurred while approving a leave request..." })
     }
@@ -209,13 +213,11 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
         await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
 
         // Update leaveRequest array of Employee
-        const doc = Employee.find({ leaveRequest: new ObjectId(id) })
+        const doc = await Employee.findOne({ leaveRequest: new ObjectId(id) })
 
         const arr = doc.leaveRequest.filter((id) => { return id !== new ObjectId(id) })
 
-        doc.leaveRequest = arr;
-
-        await doc.save();
+        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveRequest: arr } })
 
         res.status(200)
         return res.json({ message: "Leave Request Rejected successfully..." })
@@ -227,7 +229,7 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
     }
 })
 
-// to apply for leave
+// to create a leave request 
 router.post("/applyLeave", verifyToken, async (req, res) => {
 
     try {
@@ -237,7 +239,7 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
 
         if (!(employee.leaveBalance > 0)) {
             res.status(400)
-            return res.json({ message: "Balance is less than 0,Cannot apply for a leave..." })
+            return res.json({ message: "Balance is less than 0..." })
         }
 
         if (data.leaveType === null || data.leaveType === undefined || data.leaveType === "" || data.leaveType.trim() === "") {
@@ -270,6 +272,27 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
         }
 
+        const holidays = await Holiday.find();
+        let arr = [];
+        holidays.forEach((holiday) => {
+            arr.push(holiday.date.toDateString());
+        })
+
+        // check for an employee apply for leave on public holiday 
+        const start = new Date(data.startDate).toDateString()
+        const end = new Date(data.endDate).toDateString()
+
+        if (arr.includes(start) || arr.includes(end)) {
+            res.status(400);
+            return res.json({ message: "Cannot apply for leave on public holiday..." })
+        }
+
+        // check for week days 
+        if ((start.substring(0, 3) === 'Sun' || start.substring(0, 3) === 'Sat') || (end.substring(0, 3) === 'Sun' || end.substring(0, 3) === 'Sat')) {
+            res.status(400);
+            return res.json({ message: "Cannot apply for leave on week days..." })
+        }
+
         if (data.role === null || data.role === undefined || data.role === "" || data.role.trim() === "") {
             res.status(400);
             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
@@ -299,11 +322,27 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
     }
 })
 
+// to fetch all public holidays
+router.get("/publicHolidays", verifyToken, async (req, res) => {
+
+    try {
+        const holidays = await Holiday.find();
+        res.status(200);
+        return res.json({ Holidays: holidays, message: "Public Holidays fetched Successfully..." })
+
+    }
+    catch (error) {
+        console.log(error.message);
+        res.status(500);
+        return res.json({ message: "Error while fetching all public holidays" })
+    }
+})
+
 // to fetch data of all employees
 router.get("/getAllEmployeesDetails", verifyToken, async (req, res) => {
 
     try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { $project: { name: 1, role: 1 } }).sort({ role: 1 })
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
 
         res.status(200);
         return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
