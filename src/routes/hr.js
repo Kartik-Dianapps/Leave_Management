@@ -1,12 +1,7 @@
 const express = require("express");
 const router = express.Router()
-const bcrypt = require("bcrypt");
-const Employee = require("../Models/Employee.js")
-const { Holiday } = require("../Models/Holiday.js")
-const { LeaveRequest } = require("../Models/LeaveRequest.js")
-const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
-const { ObjectId } = require("mongodb")
+const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails } = require("../Controller/hrController.js");
 
 // HR logout
 router.post("/logout", verifyToken, async (req, res) => {
@@ -22,217 +17,22 @@ router.post("/logout", verifyToken, async (req, res) => {
 })
 
 // to get details of a particular employee
-router.get("/employee/:id", verifyToken, async (req, res) => {
+router.get("/employee/:id", verifyToken, getEmployee)
 
-    try {
-        const id = req.params.id;
-
-        const emp = await Employee.findById(id)
-
-        if (!emp) {
-            res.status(400);
-            return res.json({ message: "Employee not found..." })
-        }
-
-        res.status(200);
-        return res.json({ Employee: emp, message: "Employee Details fetched Successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        return res.json({ message: "Error occurred while fetching the details" })
-    }
-})
-
-// fetch all leave request
-router.get("/currentLeaveRequests", verifyToken, async (req, res) => {
-
-    try {
-        const leaveRequests = await LeaveRequest.find({ startDate: { $gte: new Date() }, isApprove: false })
-
-        res.status(200);
-        return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
-
-    }
-    catch (error) {
-        res.status(500);
-        return res.json({ message: "Error occurred while fetching current leave Requests..." })
-    }
-})
+// fetch all leave request--
+router.get("/currentLeaveRequests", verifyToken, currentLeavesRequests)
 
 // to add a public holiday
-router.post("/addPublicHoliday", verifyToken, async (req, res) => {
-
-    try {
-        let data = req.body;
-
-        let name = data.name;
-        let date = data.date;
-
-        const check = await Holiday.find({ name: name }).collation({ locale: "en", strength: 1 })
-
-        if (check.length !== 0) {
-            res.status(400);
-            return res.json({ message: "Cannot add same name Holiday..." })
-        }
-
-        if (name === null || name === undefined || name === "" || name.trim() === "") {
-            res.status(400);
-            return res.json({ message: "Name of Holiday is mandatory..." })
-        }
-
-        if (date === null || date === undefined || name === "" || name.trim() === "") {
-            res.status(400);
-            return res.json({ message: "Date of Holiday is mandatory..." })
-        }
-
-        const newHoliday = await Holiday.create(data)
-
-        res.status(200);
-        return res.json({ newHoliday: newHoliday, message: "Public Holiday is created successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-    }
-})
+router.post("/addPublicHoliday", verifyToken, addPublicHoliday)
 
 // to edit a holiday
-router.patch("/editPublicHoliday/:id", verifyToken, async (req, res) => {
-
-    try {
-
-        let id = req.params.id;
-        let data = req.body;
-
-        let name = data.name;
-        let date = data.date;
-
-        const check = await Holiday.find({ name: name }).collation({ locale: "en", strength: 1 })
-
-        if (check.length !== 0) {
-            res.status(400);
-            return res.json({ message: "This Holiday name is already exists give other name..." })
-        }
-
-        const holiday = await Holiday.findById(id);
-        if (!holiday) {
-            res.status(400);
-            return res.json({ message: "Please provide a valid Holiday id..." })
-        }
-
-        if (name !== undefined) {
-            if (name === null) {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide null..." })
-            }
-            else if (name === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string..." })
-            }
-            else if (name.trim() === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string...S" })
-            }
-        }
-
-        if (date !== undefined) {
-            if (date === null) {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide null..." })
-            }
-            else if (name === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string..." })
-            }
-            else if (name.trim() === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string...S" })
-            }
-        }
-
-        await Holiday.updateOne({ _id: new ObjectId(id) }, { $set: { name: name, date: date } })
-
-        const updatedHoliday = await Holiday.findById(id);
-
-        res.status(200);
-        return res.json({ updatedHoliday: updatedHoliday, message: "Public Holiday is created successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error Occurred while updating the document..." })
-    }
-})
+router.patch("/editPublicHoliday/:id", verifyToken, editPublicHoliday)
 
 // to approve a leave request 
-router.post("/approveRequest/:id", verifyToken, async (req, res) => {
-
-    try {
-
-        const id = req.params.id;
-        // Case 1 - HR wants to approve a leave request
-
-        // Step 1 - get an unapproved request
-        const leaveReq = await LeaveRequest.findById(id);
-
-        // Step 2 - approve it by marking it to true
-        await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
-
-        // Step 3 - update balance
-        const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
-        console.log(document);
-
-        const sub = document.leaveBalance - leaveReq.duration;
-
-        console.log(sub);
-
-        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
-
-        res.status(200)
-        return res.json({ message: "Leave Request approved successfully..." })
-    }
-    catch (error) {
-        console.log(error);
-        res.status(500);
-        return res.json({ message: "Error occurred while approving a leave request..." })
-    }
-})
+router.post("/approveRequest/:id", verifyToken, approveRequest)
 
 // to reject a leave request 
-router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
-
-    try {
-
-        const id = req.params.id;
-        // Case 2 - HR wants to disapprove a leave request
-
-        // Step 1 - get an unapproved request
-        const leaveReq = await LeaveRequest.findById(id);
-
-        // Step 2 - remove it from db
-        await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
-
-        // Update leaveRequest array of Employee
-        const doc = await Employee.findOne({ leaveRequest: new ObjectId(id) })
-
-        let arr = [];
-        doc.leaveRequest.forEach((id1) => {
-            if (id1.toString() !== id) {
-                arr.push(id1)
-            }
-        })
-
-        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveRequest: arr } })
-
-        res.status(200)
-        return res.json({ message: "Leave Request Rejected successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error occurred while approving a leave request..." })
-    }
-})
+router.post("/rejectRequest/:id", verifyToken, rejectRequest)
 
 // to create a leave request 
 // router.post("/applyLeave", verifyToken, async (req, res) => {
@@ -328,35 +128,9 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
 // })
 
 // to fetch all public holidays
-router.get("/publicHolidays", verifyToken, async (req, res) => {
-
-    try {
-        const holidays = await Holiday.find();
-        res.status(200);
-        return res.json({ Holidays: holidays, message: "Public Holidays fetched Successfully..." })
-
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error while fetching all public holidays" })
-    }
-})
+router.get("/publicHolidays", verifyToken, publicHolidays)
 
 // to fetch data of all employees
-router.get("/getAllEmployeesDetails", verifyToken, async (req, res) => {
-
-    try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
-
-        res.status(200);
-        return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error occurred while fetching all details of employees..." })
-    }
-})
+router.get("/getAllEmployeesDetails", verifyToken, getAllEmployeesDetails)
 
 module.exports = router
