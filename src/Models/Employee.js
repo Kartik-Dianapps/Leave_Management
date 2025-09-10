@@ -9,7 +9,6 @@ const employeeSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        lowercase: true,
         unique: true
     },
     role: {

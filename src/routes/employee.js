@@ -6,7 +6,7 @@ const { Holiday } = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
-const ObjectId = require("mongodb")
+const { ObjectId } = require("mongodb")
 
 // to register an employee 
 router.post("/register", async (req, res) => {
@@ -19,9 +19,33 @@ router.post("/register", async (req, res) => {
             return res.json({ message: "name field is mandatory..." })
         }
 
+        data.name = data.name.trim();
+
+        if (data.name.length < 3) {
+            res.status(400);
+            return res.json({ message: "Please provide name of minimum length 3..." })
+        }
+
         if (data.email === null || data.email === undefined || data.email === "" || data.email.trim() === "") {
             res.status(400);
             return res.json({ message: "email field is mandatory..." })
+        }
+
+        data.email = data.email.trim();
+
+        const emailExists = await Employee.find({ email: data.email }).collation({ locale: "en", strength: 1 })
+        if (emailExists.length !== 0) {
+            res.status(400);
+            return res.json({ message: "Employee exists with this email..." })
+        }
+
+        const emailRegex = /^[a-zA-Z0-9]{3,}@[a-zA-Z]+\.[a-zA-Z]{2,}$/;
+
+        const emailCheck = emailRegex.test(data.email)
+
+        if (!emailCheck) {
+            res.status(400);
+            return res.json({ message: "Please provide valid email..." })
         }
 
         if (data.role === null || data.role === undefined || data.role === "" || data.role.trim() === "") {
@@ -39,9 +63,22 @@ router.post("/register", async (req, res) => {
             return res.json({ message: "phone field is mandatory..." })
         }
 
+        const phoneRegex = /^[6-9][0-9]{9}$/
+        const validPhone = phoneRegex.test(data.phone)
+
+        if (!validPhone) {
+            res.status(400);
+            return res.json({ message: "Please Enter valid phone Number..." })
+        }
+
         if (data.password === null || data.password === undefined || data.password.trim() === "") {
             res.status(400);
             return res.json({ message: "password field is mandatory..." })
+        }
+
+        if (data.password.length < 8) {
+            res.status(400);
+            return res.json({ message: "Please Provide minimum 8 length password..." })
         }
 
         // hashing password
@@ -187,15 +224,7 @@ router.post("/applyLeave", verifyToken, async (req, res) => {
             return res.json({ message: "Cannot apply for leave on week days..." })
         }
 
-        if (data.role === null || data.role === undefined || data.role === "" || data.role.trim() === "") {
-            res.status(400);
-            return res.json({ message: "End Date cannot be null or undefined or empty string..." })
-        }
-
-        if (data.role !== "employee" && data.role !== "HR" && data.role !== "Management") {
-            res.status(400);
-            return res.json({ message: "Please enter a valid value from employee or HR or Management..." })
-        }
+        data.role = req.role;
 
         // Step 1 - Create a leave request 
         const leaveReq = await LeaveRequest.create(data);

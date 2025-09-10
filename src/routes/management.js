@@ -1,12 +1,10 @@
 const express = require("express");
 const router = express.Router()
-const bcrypt = require("bcrypt");
 const Employee = require("../Models/Employee.js")
 const Holiday = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
-const jwt = require("jsonwebtoken");
 const verifyToken = require("../middleware/auth.js");
-const ObjectId = require("mongodb")
+const { ObjectId } = require("mongodb")
 
 // Management logout
 router.post("/logout", verifyToken, async (req, res) => {
@@ -45,7 +43,7 @@ router.get("/currentLeaveRequests", verifyToken, async (req, res) => {
 
     try {
 
-        const currentLeaves = await LeaveRequest.find({ role: "HR", startDate: { $gte: new Date() } });
+        const currentLeaves = await LeaveRequest.find({ role: "HR", startDate: { $gte: new Date() }, isApprove: false });
         res.status(200);
         return res.json({ currentLeaveReq: currentLeaves, message: "Current Leave Requests" })
 
@@ -63,7 +61,7 @@ router.post("/approveRequest/:id", verifyToken, async (req, res) => {
     try {
 
         const id = req.params.id;
-        // Case 1 - Management wants to approve a leave request
+        // Case 1 - HR wants to approve a leave request
 
         // Step 1 - get an unapproved request
         const leaveReq = await LeaveRequest.findById(id);
@@ -72,17 +70,20 @@ router.post("/approveRequest/:id", verifyToken, async (req, res) => {
         await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
 
         // Step 3 - update balance
-        const doc = Employee.find({ leaveRequest: new ObjectId(id) })
+        const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+        console.log(document);
 
-        doc.leaveBalance -= doc.duration;
+        const sub = document.leaveBalance - leaveReq.duration;
 
-        await doc.save();
+        console.log(sub);
+
+        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
 
         res.status(200)
         return res.json({ message: "Leave Request approved successfully..." })
     }
     catch (error) {
-        console.log(error.message);
+        console.log(error);
         res.status(500);
         return res.json({ message: "Error occurred while approving a leave request..." })
     }
@@ -94,7 +95,7 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
     try {
 
         const id = req.params.id;
-        // Case 2 - Management wants to reject a leave request
+        // Case 2 - HR wants to disapprove a leave request
 
         // Step 1 - get an unapproved request
         const leaveReq = await LeaveRequest.findById(id);
@@ -102,14 +103,19 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
         // Step 2 - remove it from db
         await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
 
-        // Update leaveRequest array of HR
-        const doc = Employee.find({ leaveRequest: new ObjectId(id) })
+        // Update leaveRequest array of Employee
+        const doc = await Employee.findOne({ leaveRequest: new ObjectId(id), role: "HR" })
+        console.log(doc);
 
-        const arr = doc.leaveRequest.filter((id) => { return id !== new ObjectId(id) })
+        let arr = [];
+        doc.leaveRequest.forEach((id1) => {
+            if (id1.toString() !== id) {
+                arr.push(id1)
+            }
+        })
+        console.log(arr);
 
-        doc.leaveRequest = arr;
-
-        await doc.save();
+        await Employee.updateOne({ leaveRequest: new ObjectId(id), role: "HR" }, { $set: { leaveRequest: arr } })
 
         res.status(200)
         return res.json({ message: "Leave Request Rejected successfully..." })
@@ -125,7 +131,7 @@ router.post("/rejectRequest/:id", verifyToken, async (req, res) => {
 router.get("/getAllEmployeesDetails", verifyToken, async (req, res) => {
 
     try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { $project: { name: 1, role: 1 } }).sort({ role: 1 })
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
 
         res.status(200);
         return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
