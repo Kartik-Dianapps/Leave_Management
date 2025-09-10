@@ -3,19 +3,6 @@ const router = express.Router()
 const verifyToken = require("../middleware/auth.js");
 const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails } = require("../Controller/hrController.js");
 
-// HR logout
-router.post("/logout", verifyToken, async (req, res) => {
-    try {
-        res.clearCookie("Token");
-        res.status(200);
-        return res.json({ message: "Logout Successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        return res.status(500).json({ message: "Logout Failed..." })
-    }
-})
-
 // to get details of a particular employee
 router.get("/employee/:id", verifyToken, getEmployee)
 
