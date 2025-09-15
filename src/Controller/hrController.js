@@ -4,18 +4,6 @@ const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
 const Session = require("../Models/SessionModel.js")
 
-const logout = async (req, res) => {
-    try {
-        await Session.deleteOne({ userId: req.userId })
-        res.status(200);
-        return res.json({ message: "Logout Successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        return res.status(500).json({ message: "Logout Failed..." })
-    }
-}
-
 const getEmployee = async (req, res) => {
 
     try {
@@ -352,4 +340,4 @@ const getAllEmployeesDetails = async (req, res) => {
     }
 }
 
-module.exports = { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails, logout, applyLeave }
+module.exports = { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails, applyLeave }

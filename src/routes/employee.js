@@ -10,7 +10,7 @@ router.post("/register", register)
 router.post("/login", login)
 
 // employee logout
-router.post("/logout", verifyToken("employee"), logout)
+router.post("/logout", verifyToken(), logout)
 
 // to create a leave request 
 router.post("/applyLeave", verifyToken("employee"), applyLeave)
