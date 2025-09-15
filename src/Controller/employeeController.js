@@ -167,7 +167,7 @@ const applyLeave = async (req, res) => {
     try {
         const data = req.body;
 
-        const employee = await Employee.findById(req.userId);
+        const employee = await Employee.findById(req.userId).populate('leaveRequest');
 
         if (!(employee.leaveBalance > 0)) {
             res.status(400)
@@ -232,11 +232,11 @@ const applyLeave = async (req, res) => {
         const leaves = employee.leaveRequest;
         // Check for leave dates
         leaves.forEach((leave) => {
-            if (leave.startDate === leave.endDate === new Date(data.startDate) === new Date(data.endDate)) {
+            if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
                 return res.status(400).json({ message: "Leave Request for this day is already applied..." })
             }
-            else if (leave.startDate === new Date(data.startDate) && leave.endDate === new Date(data.endDate)) {
-                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
+            else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() || leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
+                return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
             }
         })
 
