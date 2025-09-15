@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router()
 const verifyToken = require("../middleware/auth.js");
-const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails, logout, applyLeave } = require("../Controller/hrController.js");
+const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails, applyLeave } = require("../Controller/hrController.js");
 
 // to get details of a particular employee
 router.get("/employee/:id", verifyToken("HR"), getEmployee)
