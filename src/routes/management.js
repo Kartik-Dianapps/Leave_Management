@@ -5,8 +5,9 @@ const Holiday = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const verifyToken = require("../middleware/auth.js");
 const { ObjectId } = require("mongodb");
-const { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails } = require("../Controller/managementController.js");
+const { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails, logout } = require("../Controller/managementController.js");
 
+router.post("/logout", verifyToken("Management"), logout)
 
 // to get all past leaves 
 router.get("/pastLeave", verifyToken("Management"), pastLeave)

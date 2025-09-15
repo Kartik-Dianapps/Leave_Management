@@ -128,7 +128,7 @@ const login = async (req, res) => {
             return res.json({ message: "Please enter correct password..." })
         }
 
-        const token = await jwt.sign({ _id: emp._id, role: emp.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
+        const token = jwt.sign({ _id: emp._id, role: emp.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
         res.cookie("Token", token, { httpOnly: true })
 
         res.status(200);
@@ -220,6 +220,17 @@ const applyLeave = async (req, res) => {
             res.status(400);
             return res.json({ message: "Cannot apply for leave on week days..." })
         }
+
+        const leaves = employee.leaveRequest;
+        // Check for leave dates
+        leaves.forEach((leave) => {
+            if (leave.startDate === leave.endDate === new Date(data.startDate) === new Date(data.endDate)) {
+                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
+            }
+            else if (leave.startDate === new Date(data.startDate) && leave.endDate === new Date(data.endDate)) {
+                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
+            }
+        })
 
         data.role = req.role;
 

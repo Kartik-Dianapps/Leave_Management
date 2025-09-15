@@ -2,6 +2,19 @@ const Employee = require("../Models/Employee.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
 
+const logout = async (req, res) => {
+    try {
+        res.clearCookie("Token");
+        res.status(200);
+        return res.json({ message: "Logout Successfully..." })
+    }
+    catch (error) {
+        console.log(error.message);
+        return res.status(500).json({ message: "Logout Failed..." })
+    }
+}
+
+
 const pastLeave = async (req, res) => {
 
     try {
@@ -121,4 +134,4 @@ const getAllEmployeesDetails = async (req, res) => {
     }
 }
 
-module.exports = { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails }
+module.exports = { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails,logout }
