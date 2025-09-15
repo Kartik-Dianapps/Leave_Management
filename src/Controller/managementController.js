@@ -1,6 +1,7 @@
 const Employee = require("../Models/Employee.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
+const Session = require("../Models/SessionModel.js")
 
 const logout = async (req, res) => {
     try {

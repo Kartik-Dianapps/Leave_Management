@@ -17,9 +17,9 @@ const verifyToken = (role) => {
             req.userId = decoded._id;
 
             // what if user is already logout then
-            const emp = await Session.findOne({ userId: req.userId })
+            const emp = await Session.findOne({ userId: req.userId, token: token })
             if (!emp) {
-                return res.status(200).json({ message: "User has already logged out..." })
+                return res.status(400).json({ message: "User has already logged out with this token..." })
             }
 
             if (decoded.role !== role) {
