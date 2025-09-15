@@ -4,7 +4,7 @@ const { ObjectId } = require("mongodb")
 
 const logout = async (req, res) => {
     try {
-        res.clearCookie("Token");
+        await Session.deleteOne({ userId: req.userId })
         res.status(200);
         return res.json({ message: "Logout Successfully..." })
     }
@@ -13,7 +13,6 @@ const logout = async (req, res) => {
         return res.status(500).json({ message: "Logout Failed..." })
     }
 }
-
 
 const pastLeave = async (req, res) => {
 
@@ -134,4 +133,4 @@ const getAllEmployeesDetails = async (req, res) => {
     }
 }
 
-module.exports = { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails,logout }
+module.exports = { pastLeave, currentLeaveRequests, approveRequest, rejectRequest, getAllEmployeesDetails, logout }

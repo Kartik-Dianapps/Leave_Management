@@ -5,7 +5,7 @@ const { ObjectId } = require("mongodb")
 
 const logout = async (req, res) => {
     try {
-        res.clearCookie("Token");
+        await Session.deleteOne({ userId: req.userId })
         res.status(200);
         return res.json({ message: "Logout Successfully..." })
     }
@@ -14,7 +14,6 @@ const logout = async (req, res) => {
         return res.status(500).json({ message: "Logout Failed..." })
     }
 }
-
 
 const getEmployee = async (req, res) => {
 
