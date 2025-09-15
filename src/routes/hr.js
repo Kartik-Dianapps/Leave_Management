@@ -4,22 +4,22 @@ const verifyToken = require("../middleware/auth.js");
 const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails } = require("../Controller/hrController.js");
 
 // to get details of a particular employee
-router.get("/employee/:id", verifyToken, getEmployee)
+router.get("/employee/:id", verifyToken("HR"), getEmployee)
 
 // fetch all leave request--
-router.get("/currentLeaveRequests", verifyToken, currentLeavesRequests)
+router.get("/currentLeaveRequests", verifyToken("HR"), currentLeavesRequests)
 
 // to add a public holiday
-router.post("/addPublicHoliday", verifyToken, addPublicHoliday)
+router.post("/addPublicHoliday", verifyToken("HR"), addPublicHoliday)
 
 // to edit a holiday
-router.patch("/editPublicHoliday/:id", verifyToken, editPublicHoliday)
+router.patch("/editPublicHoliday/:id", verifyToken("HR"), editPublicHoliday)
 
 // to approve a leave request 
-router.post("/approveRequest/:id", verifyToken, approveRequest)
+router.post("/approveRequest/:id", verifyToken("HR"), approveRequest)
 
 // to reject a leave request 
-router.post("/rejectRequest/:id", verifyToken, rejectRequest)
+router.post("/rejectRequest/:id", verifyToken("HR"), rejectRequest)
 
 // to create a leave request 
 // router.post("/applyLeave", verifyToken, async (req, res) => {
@@ -115,9 +115,9 @@ router.post("/rejectRequest/:id", verifyToken, rejectRequest)
 // })
 
 // to fetch all public holidays
-router.get("/publicHolidays", verifyToken, publicHolidays)
+router.get("/publicHolidays", verifyToken("HR"), publicHolidays)
 
 // to fetch data of all employees
-router.get("/getAllEmployeesDetails", verifyToken, getAllEmployeesDetails)
+router.get("/getAllEmployeesDetails", verifyToken("HR"), getAllEmployeesDetails)
 
 module.exports = router

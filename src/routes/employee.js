@@ -10,21 +10,21 @@ router.post("/register", register)
 router.post("/login", login)
 
 // employee logout
-router.post("/logout", verifyToken, logout)
+router.post("/logout", verifyToken("employee"), logout)
 
 // to create a leave request 
-router.post("/applyLeave", verifyToken, applyLeave)
+router.post("/applyLeave", verifyToken("employee"), applyLeave)
 
 // to fetch past leave request
-router.get("/pastLeave", verifyToken, pastLeave)
+router.get("/pastLeave", verifyToken("employee"), pastLeave)
 
 // to fetch current leave request
-router.get("/currentLeave", verifyToken, currentLeave)
+router.get("/currentLeave", verifyToken("employee"), currentLeave)
 
 // to fetch all public holidays
-router.get("/publicHolidays", verifyToken, publicHolidays)
+router.get("/publicHolidays", verifyToken("employee"), publicHolidays)
 
 // to fetch data of all employees
-router.get("/getAllEmployeesDetails", verifyToken, getAllEmployeesDetails)
+router.get("/getAllEmployeesDetails", verifyToken("employee"), getAllEmployeesDetails)
 
 module.exports = router
