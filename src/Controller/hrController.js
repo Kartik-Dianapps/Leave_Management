@@ -2,7 +2,6 @@ const Employee = require("../Models/Employee.js")
 const { Holiday } = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
-const Session = require("../Models/SessionModel.js")
 
 const getEmployee = async (req, res) => {
 
@@ -28,7 +27,9 @@ const getEmployee = async (req, res) => {
 const currentLeavesRequests = async (req, res) => {
 
     try {
-        const leaveRequests = await LeaveRequest.find({ isApprove: false })
+        const today = new Date();
+
+        const leaveRequests = await LeaveRequest.find({ isApprove: false, startDate: { $lte: today }, endDate: { $gte: today } })
 
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })

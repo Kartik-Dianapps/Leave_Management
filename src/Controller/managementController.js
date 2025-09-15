@@ -1,15 +1,14 @@
 const Employee = require("../Models/Employee.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
-const Session = require("../Models/SessionModel.js")
-
 
 const pastLeave = async (req, res) => {
 
     try {
+        let today = new Date();
 
         // Step 1 - Fetch all leave request of HR using LeaveRequest
-        const emp = await LeaveRequest.find({ role: "HR", isApprove: true });
+        const emp = await LeaveRequest.find({ role: "HR", endDate: { $lt: today } });
 
         res.status(200)
         return res.json({ pastLeaveRequests: emp, message: "Past Leave Requests fetched successfully..." })
@@ -25,8 +24,8 @@ const pastLeave = async (req, res) => {
 const currentLeaveRequests = async (req, res) => {
 
     try {
-
-        const currentLeaves = await LeaveRequest.find({ role: "HR", isApprove: false });
+        let today = new Date()
+        const currentLeaves = await LeaveRequest.find({ role: "HR", startDate: { $lte: today }, endDate: { $gte: today } });
         res.status(200);
         return res.json({ currentLeaveReq: currentLeaves, message: "Current Leave Requests" })
 

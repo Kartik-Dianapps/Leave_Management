@@ -268,12 +268,12 @@ const pastLeave = async (req, res) => {
         const emp = await Employee.findById(id).populate('leaveRequest')
         console.log(emp);
 
+        let today = new Date();
+
         let arr = [];
 
-        emp.leaveRequest.forEach((doc) => {
-            if (doc.endDate.getDate() < new Date().getDate() && doc.endDate.getFullYear() <= new Date().getFullYear() && doc.endDate.getMonth() <= new Date().getMonth())
-                arr.push(doc)
-        })
+        arr = emp.leaveRequest.filter(doc => doc.endDate < today);
+
         console.log(arr);
 
         res.status(200)
@@ -293,13 +293,13 @@ const currentLeave = async (req, res) => {
         const id = req.userId;
         const emp = await Employee.findById(id).populate('leaveRequest')
 
+        let today = new Date();
+
         let arr = [];
 
-
-        emp.leaveRequest.forEach((doc) => {
-            if (doc.endDate.getDate() >= new Date().getDate() && doc.endDate.getFullYear() >= new Date().getFullYear() && doc.endDate.getMonth() >= new Date().getMonth())
-                arr.push(doc)
-        })
+        arr = emp.leaveRequest.filter(
+            doc => doc.startDate <= today && doc.endDate >= today
+        );
 
         console.log(arr);
 
