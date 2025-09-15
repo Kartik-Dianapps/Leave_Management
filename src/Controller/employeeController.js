@@ -3,7 +3,8 @@ const Employee = require("../Models/Employee.js")
 const { Holiday } = require("../Models/Holiday.js")
 const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const jwt = require("jsonwebtoken");
-const { ObjectId } = require("mongodb")
+const { ObjectId } = require("mongodb");
+const Session = require("../Models/SessionModel.js");
 
 const register = async (req, res) => {
 
@@ -129,10 +130,17 @@ const login = async (req, res) => {
         }
 
         const token = jwt.sign({ _id: emp._id, role: emp.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
-        res.cookie("Token", token, { httpOnly: true })
+
+        const existingSession = await Session.findOne({ userId: emp._id })
+
+        if (existingSession) {
+            await Session.deleteOne({ userId: emp._id })
+        }
+
+        await Session.create({ userId: emp._id, token: token })
 
         res.status(200);
-        return res.json({ message: "Login Successful...", name: emp.name, email: emp.email })
+        return res.json({ message: "Login Successful...", name: emp.name, email: emp.email, token: token })
 
     }
     catch (error) {
@@ -144,7 +152,7 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        res.clearCookie("Token");
+        await Session.deleteOne({ userId: req.userId })
         res.status(200);
         return res.json({ message: "Logout Successfully..." })
     }
