@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router()
 const verifyToken = require("../middleware/auth.js");
-const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails, applyLeave } = require("../Controller/hrController.js");
+const { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays, getAllEmployeesDetails } = require("../Controller/hrController.js");
 
 // to get details of a particular employee
 router.get("/employee/:id", verifyToken("HR"), getEmployee)
@@ -10,7 +10,7 @@ router.get("/employee/:id", verifyToken("HR"), getEmployee)
 router.get("/currentLeaveRequests", verifyToken("HR"), currentLeavesRequests)
 
 // to create a leave request
-router.get("/applyLeave", verifyToken("HR"), applyLeave)
+// router.get("/applyLeave", verifyToken("HR"), applyLeave)
 
 // to add a public holiday
 router.post("/addPublicHoliday", verifyToken("HR"), addPublicHoliday)

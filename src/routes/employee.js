@@ -13,7 +13,7 @@ router.post("/login", login)
 router.post("/logout", verifyToken(), logout)
 
 // to create a leave request 
-router.post("/applyLeave", verifyToken("employee"), applyLeave)
+router.post("/applyLeave", verifyToken(), applyLeave)
 
 // to fetch past leave request
 router.get("/pastLeave", verifyToken("employee"), pastLeave)

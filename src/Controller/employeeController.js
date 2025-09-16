@@ -231,14 +231,17 @@ const applyLeave = async (req, res) => {
 
         const leaves = employee.leaveRequest;
         // Check for leave dates
-        leaves.forEach((leave) => {
+        for (let i = 0; i < leaves.length; i++) {
+
+            let leave = leaves[i];
+
             if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
                 return res.status(400).json({ message: "Leave Request for this day is already applied..." })
             }
             else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() || leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
                 return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
             }
-        })
+        }
 
         data.role = req.role;
 
@@ -256,8 +259,7 @@ const applyLeave = async (req, res) => {
     }
     catch (error) {
         console.log(error.message);
-        res.status(500)
-        return res.json({ message: "Leave request failed to create..." })
+        return res.status(500).json({ message: "Leave request failed to create..." })
     }
 }
 
