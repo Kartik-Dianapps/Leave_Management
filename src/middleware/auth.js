@@ -9,7 +9,7 @@ const verifyToken = (role = ["employee", "HR", "Management"]) => {
             let token = req.headers.authorization;
             if (!token || !token.startsWith("Bearer ")) {
                 res.status(401);
-                return res.json({ message: "Please Enter Token or Provided Token is invalid..." })
+                return res.json({ message: "Please Provide Token or Provided Token is invalid..." })
             }
 
             token = token.substring(token.indexOf(" ") + 1)
@@ -17,30 +17,33 @@ const verifyToken = (role = ["employee", "HR", "Management"]) => {
 
             console.log(decoded);
 
-            req.userId = decoded._id;
-            req.role = decoded.role;
-
-            if (Array.isArray(role) && role.includes(req.role)) {
+            if (Array.isArray(role) && role.includes(decoded.role)) {
                 // what if user is already logout then
-                const emp = await Session.findOne({ userId: req.userId, token: token })
+                const emp = await Session.findOne({ userId: decoded._id, token: token })
                 if (!emp) {
-                    return res.status(400).json({ message: "User has already logged out with this token..." })
+                    return res.status(400).json({ message: "Employee has already logged out with this token..." })
                 }
             }
             else {
-                const emp = await Session.findOne({ userId: req.userId, token: token })
+                const emp = await Session.findOne({ userId: decoded._id, token: token })
                 if (!emp) {
-                    return res.status(400).json({ message: "User has already logged out with this token..." })
+                    return res.status(400).json({ message: "Employee has already logged out with this token..." })
                 }
 
                 if (decoded.role !== role) {
                     return res.status(403).json({ message: "Does not have access to this resource..." })
                 }
             }
+
+            req.userId = decoded._id;
+            req.role = decoded.role;
             next();
         }
         catch (error) {
             console.log(error.message);
+            if (error.name === "TokenExpiredToken") {
+                return res.status(400).json({ message: "Provided Token has Expired..." })
+            }
             res.status(400).json({ message: "Invalid Token..." })
         }
     }

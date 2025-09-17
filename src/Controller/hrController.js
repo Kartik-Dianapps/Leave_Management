@@ -28,8 +28,9 @@ const currentLeavesRequests = async (req, res) => {
 
     try {
         const today = new Date();
+        today.setUTCHours(0, 0, 0, 0)
 
-        const leaveRequests = await LeaveRequest.find({ isApprove: false, startDate: { $lte: today }, endDate: { $gte: today } })
+        const leaveRequests = await LeaveRequest.find({ isApprove: false, $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
 
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
@@ -40,105 +41,6 @@ const currentLeavesRequests = async (req, res) => {
         return res.json({ message: "Error occurred while fetching current leave Requests..." })
     }
 }
-
-// const applyLeave = async (req, res) => {
-
-//     try {
-//         const data = req.body;
-
-//         const employee = await Employee.findById(req.userId).populate('leaveRequest');
-
-//         if (!(employee.leaveBalance > 0)) {
-//             res.status(400)
-//             return res.json({ message: "Cannot apply for leave as balance is less than 0..." })
-//         }
-
-//         if (data.leaveType === null || data.leaveType === undefined || data.leaveType === "" || data.leaveType.trim() === "") {
-//             res.status(400);
-//             return res.json({ message: "Leave Type cannot be null or undefined or empty string..." })
-//         }
-//         data.leaveType = data.leaveType.trim();
-
-//         if (data.duration === null || data.duration === undefined || data.duration === "") {
-//             res.status(400);
-//             return res.json({ message: "Duration cannot be null or undefined or empty string..." })
-//         }
-
-//         if (data.duration > 2) {
-//             res.status(400);
-//             return res.json({ message: "Maximum leave you can apply for is 2 days..." })
-//         }
-
-//         if (data.comment === null || data.comment === undefined || data.comment === "" || data.comment.trim() === "") {
-//             res.status(400);
-//             return res.json({ message: "Comment cannot be null or undefined or empty string..." })
-//         }
-
-//         data.comment = data.comment.trim();
-
-
-//         if (data.startDate === null || data.startDate === undefined || data.startDate === "") {
-//             res.status(400);
-//             return res.json({ message: "Start date cannot be null or undefined or empty string..." })
-//         }
-
-//         if (data.endDate === null || data.endDate === undefined || data.endDate === "") {
-//             res.status(400);
-//             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
-//         }
-
-//         const holidays = await Holiday.find();
-//         let arr = [];
-//         holidays.forEach((holiday) => {
-//             arr.push(holiday.date.toDateString());
-//         })
-
-//         // check for an employee apply for leave on public holiday 
-//         const start = new Date(data.startDate).toDateString()
-//         const end = new Date(data.endDate).toDateString()
-
-//         if (arr.includes(start) || arr.includes(end)) {
-//             res.status(400);
-//             return res.json({ message: "Cannot apply for leave on public holiday..." })
-//         }
-
-//         // check for week days 
-//         if ((start.substring(0, 3) === 'Sun' || start.substring(0, 3) === 'Sat') || (end.substring(0, 3) === 'Sun' || end.substring(0, 3) === 'Sat')) {
-//             res.status(400);
-//             return res.json({ message: "Cannot apply for leave on week days..." })
-//         }
-
-//         const leaves = employee.leaveRequest;
-//         // Check for leave dates
-//         leaves.forEach((leave) => {
-//             if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
-//                 return res.status(400).json({ message: "Leave Request for this day is already applied..." })
-//             }
-//             else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() || leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
-//                 return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
-//             }
-//         })
-
-//         data.role = req.role;
-
-//         // Step 1 - Create a leave request 
-//         const leaveReq = await LeaveRequest.create(data);
-
-//         // Step 2 - Update the employee Leave Request array
-//         const emp = await Employee.updateOne(
-//             { _id: req.userId },
-//             { $push: { leaveRequest: leaveReq._id } }
-//         );
-
-//         res.status(200);
-//         return res.json({ Leave_request: leaveReq, message: "Leave Request Raised..." })
-//     }
-//     catch (error) {
-//         console.log(error.message);
-//         res.status(500)
-//         return res.json({ message: "Leave request failed to create..." })
-//     }
-// }
 
 const addPublicHoliday = async (req, res) => {
 
@@ -210,22 +112,14 @@ const editPublicHoliday = async (req, res) => {
             }
             else if (name.trim() === "") {
                 res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string...S" })
+                return res.json({ message: "If you want to update name Please don't provide empty string..." })
             }
         }
 
         if (date !== undefined) {
             if (date === null) {
                 res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide null..." })
-            }
-            else if (name === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string..." })
-            }
-            else if (name.trim() === "") {
-                res.status(400);
-                return res.json({ message: "If you want to update name Please don't provide empty string...S" })
+                return res.json({ message: "If you want to update date Please don't provide null..." })
             }
         }
 
@@ -234,7 +128,7 @@ const editPublicHoliday = async (req, res) => {
         const updatedHoliday = await Holiday.findById(id);
 
         res.status(200);
-        return res.json({ updatedHoliday: updatedHoliday, message: "Public Holiday is created successfully..." })
+        return res.json({ updatedHoliday: updatedHoliday, message: "Public Holiday is updated successfully..." })
     }
     catch (error) {
         console.log(error.message);

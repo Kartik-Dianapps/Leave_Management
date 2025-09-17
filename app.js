@@ -8,7 +8,6 @@ const managementRouter = require("./src/routes/management.js")
 const cookieParser = require("cookie-parser")
 
 app.use(express.json())
-app.use(cookieParser())
 
 const port = process.env.PORT || 4000
 connection()

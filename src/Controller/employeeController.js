@@ -137,7 +137,7 @@ const login = async (req, res) => {
             await Session.deleteOne({ userId: emp._id })
         }
 
-        await Session.create({ userId: emp._id, token: token })
+        await Session.create({ userId: emp._id, token: token, tokenExpiry: new Date(Date.now() + (1 * 24 * 60 * 60 * 1000)) })
 
         res.status(200);
         return res.json({ message: "Login Successful...", name: emp.name, email: emp.email, token: token })

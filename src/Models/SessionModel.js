@@ -7,8 +7,12 @@ const sessionSchema = new mongoose.Schema({
     },
     token: {
         type: String
+    },
+    tokenExpiry: {
+        type: Date,
+        default: null
     }
-})
+}, { timestamps: true })
 
 const Session = mongoose.model("Session", sessionSchema);
 
