@@ -208,6 +208,12 @@ const applyLeave = async (req, res) => {
             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
         }
 
+        let today = new Date();
+
+        if (new Date(data.startDate) < today || new Date(data.endDate) < today) {
+            return res.status(400).json({ message: "Cannot Apply Leave for past days..." })
+        }
+
         const holidays = await Holiday.find();
         let arr = [];
         holidays.forEach((holiday) => {
