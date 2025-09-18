@@ -212,7 +212,7 @@ const applyLeave = async (req, res) => {
 
         if (new Date(data.startDate) < today || new Date(data.endDate) < today) {
             return res.status(400).json({ message: "Cannot Apply Leave for past days..." })
-        }
+        } // End Date must be greater than Start Date !
 
         const holidays = await Holiday.find();
         let arr = [];

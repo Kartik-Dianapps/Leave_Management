@@ -10,6 +10,7 @@ const cookieParser = require("cookie-parser")
 app.use(express.json())
 
 const port = process.env.PORT || 4000
+console.log("port : ", port);
 connection()
 
 app.use("/employee", employeeRouter);
