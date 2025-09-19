@@ -177,127 +177,109 @@ const editPublicHoliday = async (req, res) => {
 }
 
 const approveRequest = async (req, res) => {
-
     try {
         const id = req.params.id;
+        const leaveReq = await LeaveRequest.findById(id);
 
-        if (req.role === "HR") {
-            // Case 1 - HR wants to approve a leave request
-
-            // Step 1 - get an unapproved request
-            const leaveReq = await LeaveRequest.findById(id);
-
-            if (leaveReq.role !== "employee") {
-                return res.status(400).json({ message: "Cannot approve leave request of other than employees..." })
-            }
-
-            if (leaveReq.isApprove === true) {
-                return res.status(400).json({ message: "Leave Request already approved..." })
-            }
-            // Step 2 - approve it by marking it to true
-            await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
-
-            // Step 3 - update balance
-            const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
-            console.log(document);
-
-            const sub = document.leaveBalance - leaveReq.duration;
-
-            console.log(sub);
-
-            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
+        if (!leaveReq) {
+            return res.status(404).json({ message: "Leave request not found" });
         }
-        else if (req.role === "Management") {
 
-            const leaveReq = await LeaveRequest.findById(id);
-
-            if (leaveReq.role !== "HR") {
-                return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." })
-            }
-
-            if (leaveReq.isApprove === true) {
-                return res.status(400).json({ message: "Leave Request already approved..." })
-            }
-
-            await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
-
-            const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
-            console.log(document);
-
-            const sub = document.leaveBalance - leaveReq.duration;
-
-            console.log(sub);
-
-            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
+        // Role-based validation
+        if (req.role === "HR" && leaveReq.role !== "employee") {
+            return res.status(400).json({ message: "Cannot approve leave request of other than employees..." });
         }
-        res.status(200)
-        return res.json({ message: "Leave Request approved successfully..." })
-    }
-    catch (error) {
+        if (req.role === "Management" && leaveReq.role !== "HR") {
+            return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." });
+        }
+
+        if (leaveReq.isApprove === true) {
+            return res.status(400).json({ message: "Leave Request already approved..." });
+        }
+
+        const employee = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found for this leave request" });
+        }
+
+        // Step 1 - Approve leave request
+        await LeaveRequest.updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    isApprove: true,
+                }
+            }
+        );
+
+        // Step 2 - Deduct leave balance
+        await Employee.updateOne(
+            { _id: employee._id },
+            { $inc: { leaveBalance: -leaveReq.duration } }
+        );
+
+        return res.status(200).json({ message: "Leave Request approved successfully" });
+
+    } catch (error) {
         console.log(error);
-        res.status(500);
-        return res.json({ message: "Error occurred while approving a leave request..." })
+        return res.status(500).json({ message: "Error occurred while approving a leave request..." });
     }
-}
+};
 
 const rejectRequest = async (req, res) => {
-
     try {
         const id = req.params.id;
+        const leaveReq = await LeaveRequest.findById(id);
 
-        if (req.role === "HR") {
-
-            const leaveReq = await LeaveRequest.findById(id);
-
-            if (leaveReq.role !== "employee") {
-                return res.status(400).json({ message: "Cannot approve leave request of other than employees..." })
-            }
-
-            await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
-
-            const doc = await Employee.findOne({ leaveRequest: new ObjectId(id) })
-
-            let arr = [];
-            doc.leaveRequest.forEach((id1) => {
-                if (id1.toString() !== id) {
-                    arr.push(id1)
-                }
-            })
-
-            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveRequest: arr } })
-        }
-        else if (req.role === "Management") {
-            const leaveReq = await LeaveRequest.findById(id);
-
-            if (leaveReq.role !== "HR") {
-                return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." })
-            }
-
-            await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
-
-            const doc = await Employee.findOne({ leaveRequest: new ObjectId(id), role: "HR" })
-            console.log(doc);
-
-            let arr = [];
-            doc.leaveRequest.forEach((id1) => {
-                if (id1.toString() !== id) {
-                    arr.push(id1)
-                }
-            })
-            console.log(arr);
-
-            await Employee.updateOne({ leaveRequest: new ObjectId(id), role: "HR" }, { $set: { leaveRequest: arr } })
+        if (!leaveReq) {
+            return res.status(404).json({ message: "Leave request not found" });
         }
 
-        res.status(200)
-        return res.json({ message: "Leave Request Rejected successfully..." })
-    }
-    catch (error) {
+        // Role checks
+        if (req.role === "HR" && leaveReq.role !== "employee") {
+            return res.status(400).json({ message: "Cannot reject leave request of other than employees..." });
+        }
+        if (req.role === "Management" && leaveReq.role !== "HR") {
+            return res.status(400).json({ message: "Cannot reject leave request of other than HRs..." });
+        }
+
+        if (leaveReq.isRejected === true) {
+            return res.status(400).json({ message: "Leave request already rejected" })
+        }
+
+        const employee = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+        if (!employee) {
+            return res.status(404).json({ message: "Employee not found for this leave request" });
+        }
+
+        // Refund balance if already approved
+        if (leaveReq.isApprove === true) {
+            await Employee.updateOne(
+                { _id: employee._id },
+                { $inc: { leaveBalance: leaveReq.duration } }
+            );
+        }
+
+        // Remove from employee's leaveRequest array
+        const updatedArr = employee.leaveRequest.filter(
+            (rid) => rid.toString() !== id
+        );
+        await Employee.updateOne(
+            { _id: employee._id },
+            { $set: { leaveRequest: updatedArr } }
+        );
+
+        await LeaveRequest.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { isApprove: false, isRejected: true } }
+        );
+
+        return res.status(200).json({ message: "Leave Request rejected successfully" });
+    } catch (error) {
         console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error occurred while approving a leave request..." })
+        return res.status(500).json({ message: "Error occurred while rejecting a leave request" });
     }
-}
+};
 
 const publicHolidays = async (req, res) => {
 

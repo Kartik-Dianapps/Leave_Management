@@ -298,6 +298,7 @@ const pastLeave = async (req, res) => {
         console.log(emp);
 
         let today = new Date();
+        today.setUTCHours(0, 0, 0, 0)
 
         let arr = [];
 
@@ -323,6 +324,7 @@ const currentLeave = async (req, res) => {
         const emp = await Employee.findById(id).populate('leaveRequest')
 
         let today = new Date();
+        today.setUTCHours(0, 0, 0, 0)
 
         let arr = [];
 
@@ -361,7 +363,7 @@ const publicHolidays = async (req, res) => {
 const getAllEmployeesDetails = async (req, res) => {
 
     try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1, email: 1 }).sort({ role: 1 })
 
         res.status(200);
         return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
