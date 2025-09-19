@@ -171,7 +171,7 @@ const applyLeave = async (req, res) => {
 
         if (employee.leaveBalance === 0) {
             res.status(400)
-            return res.json({ message: "Cannot apply for leave as balance is less than 0..." })
+            return res.json({ message: "Cannot apply for leave as balance is 0..." })
         }
 
         if (data.leaveType === null || data.leaveType === undefined || data.leaveType === "" || data.leaveType.trim() === "") {
@@ -213,6 +213,7 @@ const applyLeave = async (req, res) => {
         }
 
         let today = new Date();
+        today.setUTCHours(0, 0, 0, 0)
 
         if (new Date(data.startDate) < today || new Date(data.endDate) < today) {
             return res.status(400).json({ message: "Cannot Apply Leave for past days..." })
@@ -241,6 +242,18 @@ const applyLeave = async (req, res) => {
         if ((start.substring(0, 3) === 'Sun' || start.substring(0, 3) === 'Sat') || (end.substring(0, 3) === 'Sun' || end.substring(0, 3) === 'Sat')) {
             res.status(400);
             return res.json({ message: "Cannot apply for leave on week days..." })
+        }
+        else {
+            let start = new Date(data.startDate);
+            let end = new Date(data.endDate);
+
+            let diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            console.log(diff);
+
+
+            if (diff !== data.duration) {
+                return res.status(400).json({ message: 'Date range is not valid acc to employee leave balance...' })
+            }
         }
 
         const leaves = employee.leaveRequest;

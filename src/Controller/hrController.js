@@ -191,6 +191,9 @@ const approveRequest = async (req, res) => {
                 return res.status(400).json({ message: "Cannot approve leave request of other than employees..." })
             }
 
+            if (leaveReq.isApprove === true) {
+                return res.status(400).json({ message: "Leave Request already approved..." })
+            }
             // Step 2 - approve it by marking it to true
             await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
 
@@ -210,6 +213,10 @@ const approveRequest = async (req, res) => {
 
             if (leaveReq.role !== "HR") {
                 return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." })
+            }
+
+            if (leaveReq.isApprove === true) {
+                return res.status(400).json({ message: "Leave Request already approved..." })
             }
 
             await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
