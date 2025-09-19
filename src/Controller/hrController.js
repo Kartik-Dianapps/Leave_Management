@@ -185,7 +185,7 @@ const approveRequest = async (req, res) => {
             return res.status(404).json({ message: "Leave request not found" });
         }
 
-        // Role-based validation
+        // Role-check
         if (req.role === "HR" && leaveReq.role !== "employee") {
             return res.status(400).json({ message: "Cannot approve leave request of other than employees..." });
         }
