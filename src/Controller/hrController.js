@@ -30,7 +30,7 @@ const currentLeavesRequests = async (req, res) => {
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0)
 
-        const leaveRequests = await LeaveRequest.find({ isApprove: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
+        const leaveRequests = await LeaveRequest.find({ isApprove: false, isRejected: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
         // HR will also get the leave requests of other HRs!
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
@@ -74,7 +74,7 @@ const addPublicHoliday = async (req, res) => {
                 }
             })
             await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration }, $set: { leaveRequest: arr } })
-            await LeaveRequest.deleteOne({ _id: leave._id })
+            await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })
         }
 
         const check = await Holiday.find({ name: name, date: new Date(date) }).collation({ locale: "en", strength: 1 })

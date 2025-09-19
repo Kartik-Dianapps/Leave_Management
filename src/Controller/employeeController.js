@@ -252,7 +252,7 @@ const applyLeave = async (req, res) => {
 
 
             if (diff !== data.duration) {
-                return res.status(400).json({ message: 'Date range is not valid acc to employee leave balance...' })
+                return res.status(400).json({ message: 'Date range is not valid acc to duration...' })
             }
         }
 
