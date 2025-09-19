@@ -40,19 +40,4 @@ const currentLeaveRequests = async (req, res) => {
     }
 }
 
-const getAllEmployeesDetails = async (req, res) => {
-
-    try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
-
-        res.status(200);
-        return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error occurred while fetching all details of employees..." })
-    }
-}
-
 module.exports = { pastLeave, currentLeaveRequests, getAllEmployeesDetails }
