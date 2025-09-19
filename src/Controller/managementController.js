@@ -40,4 +40,4 @@ const currentLeaveRequests = async (req, res) => {
     }
 }
 
-module.exports = { pastLeave, currentLeaveRequests, getAllEmployeesDetails }
+module.exports = { pastLeave, currentLeaveRequests }
