@@ -8,7 +8,7 @@ const getEmployee = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const emp = await Employee.findById(id)
+        const emp = await Employee.findById(id).populate('leaveRequest')
 
         if (!emp) {
             res.status(400);
@@ -16,7 +16,7 @@ const getEmployee = async (req, res) => {
         }
 
         res.status(200);
-        return res.json({ Employee: emp, message: "Employee Details fetched Successfully..." })
+        return res.json({ Employee: { name: emp.name, email: emp.email, role: emp.role, phone: emp.phone, leaveBalance: emp.leaveBalance, leaveRequest: emp.leaveRequest }, message: "Employee Details fetched Successfully..." })
     }
     catch (error) {
         console.log(error.message);
@@ -30,7 +30,7 @@ const currentLeavesRequests = async (req, res) => {
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0)
 
-        const leaveRequests = await LeaveRequest.find({ isApprove: false, isRejected: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
+        const leaveRequests = await LeaveRequest.find({ isApprove: false, isRejected: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today } }] })
         // HR will also get the leave requests of other HRs!
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
@@ -67,12 +67,9 @@ const addPublicHoliday = async (req, res) => {
             let leave = leaves[i];
 
             let emp = await Employee.findOne({ leaveRequest: leave._id })
-            let arr = [];
-            emp.leaveRequest.filter((id1) => {
-                if (id1.toString() !== leave._id.toString()) {
-                    arr.push(id1);
-                }
-            })
+            let arr;
+            arr = emp.leaveRequest.filter(id1 => id1.toString() !== leave._id.toString());
+
             await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration }, $set: { leaveRequest: arr } })
             await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })
         }
@@ -152,11 +149,11 @@ const editPublicHoliday = async (req, res) => {
                 }
             }
         }
-        const check = await Holiday.find({ _id: { $ne: new ObjectId(id) }, name: (name ? name : holidayById.name), date: (date ? new Date(date) : holidayById.date) }).collation({ locale: "en", strength: 1 })
+        const check = await Holiday.findOne({ _id: { $ne: new ObjectId(id) }, name: (name ? name : holidayById.name), date: (date ? new Date(date) : holidayById.date) }).collation({ locale: "en", strength: 1 })
 
-        if (check.length !== 0) {
+        if (check) {
             res.status(400);
-            return res.json({ message: "Same name Holiday already exists..." })
+            return res.json({ message: "Holiday with the same name already exists on this date..." })
         }
 
         const updateCheck = await Holiday.updateOne({ _id: new ObjectId(id) }, { $set: { name: name ? name : holidayById.name, date: date ? date : holidayById.date } })
