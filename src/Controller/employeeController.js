@@ -169,7 +169,7 @@ const applyLeave = async (req, res) => {
 
         const employee = await Employee.findById(req.userId).populate('leaveRequest');
 
-        if (!(employee.leaveBalance > 0)) {
+        if (employee.leaveBalance === 0) {
             res.status(400)
             return res.json({ message: "Cannot apply for leave as balance is less than 0..." })
         }
@@ -185,9 +185,13 @@ const applyLeave = async (req, res) => {
             return res.json({ message: "Duration cannot be null or undefined or empty string..." })
         }
 
-        if (data.duration > 2) {
+        if (data.duration <= 0) {
+            return res.status(400).json({ message: "Cannot enter duration 0 or less than 0" })
+        }
+
+        if (data.duration > employee.leaveBalance) {
             res.status(400);
-            return res.json({ message: "Maximum leave you can apply for is 2 days..." })
+            return res.json({ message: `Maximum leave you can apply for is ${employee.leaveBalance} days...` })
         }
 
         if (data.comment === null || data.comment === undefined || data.comment === "" || data.comment.trim() === "") {
@@ -213,6 +217,10 @@ const applyLeave = async (req, res) => {
         if (new Date(data.startDate) < today || new Date(data.endDate) < today) {
             return res.status(400).json({ message: "Cannot Apply Leave for past days..." })
         } // End Date must be greater than Start Date !
+
+        if (new Date(data.startDate) > new Date(data.endDate)) {
+            return res.status(400).json({ message: "Start date cannot be greater than end Date..." })
+        }
 
         const holidays = await Holiday.find();
         let arr = [];
@@ -306,7 +314,7 @@ const currentLeave = async (req, res) => {
         let arr = [];
 
         arr = emp.leaveRequest.filter(
-            doc => doc.startDate <= today && doc.endDate >= today
+            doc => (doc.startDate <= today && doc.endDate >= today) || (doc.startDate > today && doc.endDate > today)
         );
 
         console.log(arr);

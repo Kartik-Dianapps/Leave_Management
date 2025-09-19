@@ -24,6 +24,9 @@ const verifyToken = (role = ["employee", "HR", "Management"]) => {
                     return res.status(400).json({ message: "Employee has already logged out with this token..." })
                 }
             }
+            else if (Array.isArray(role) && !role.includes(decoded.role)) {
+                return res.status(403).json({ message: "Does not have access to this resource..." })
+            }
             else {
                 const emp = await Session.findOne({ userId: decoded._id, token: token })
                 if (!emp) {

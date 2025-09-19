@@ -13,13 +13,4 @@ router.get("/pastLeave", verifyToken("Management"), pastLeave)
 // to get all current leave requests
 router.get("/currentLeaveRequests", verifyToken("Management"), currentLeaveRequests)
 
-// to approve a leave request 
-router.post("/approveRequest/:id", verifyToken("Management"), approveRequest)
-
-// to reject a leave request 
-router.post("/rejectRequest/:id", verifyToken("Management"), rejectRequest)
-
-// to fetch data of all employees
-router.get("/getAllEmployeesDetails", verifyToken("Management"), getAllEmployeesDetails)
-
 module.exports = router

@@ -30,7 +30,7 @@ const currentLeavesRequests = async (req, res) => {
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0)
 
-        const leaveRequests = await LeaveRequest.find({ isApprove: false, $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
+        const leaveRequests = await LeaveRequest.find({ isApprove: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] })
         // HR will also get the leave requests of other HRs!
         res.status(200);
         return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
@@ -47,24 +47,51 @@ const addPublicHoliday = async (req, res) => {
     try {
         let data = req.body;
 
-        let name = data.name.trim();
-        let date = data.date.trim();
-
-        const check = await Holiday.find({ name: name, date: new Date(date) }).collation({ locale: "en", strength: 1 })
-
-        if (check.length !== 0) {
-            res.status(400);
-            return res.json({ message: "Cannot add same name Holiday..." })
-        }
+        let name = data.name;
+        let date = data.date;
 
         if (name === null || name === undefined || name === "" || name.trim() === "") {
             res.status(400);
             return res.json({ message: "Name of Holiday is mandatory..." })
         }
 
-        if (date === null || date === undefined || name === "" || name.trim() === "") {
+        if (date === null || date === undefined || date === "" || date.trim() === "") {
             res.status(400);
             return res.json({ message: "Date of Holiday is mandatory..." })
+        }
+
+        // check for if there is a leave request applied on that holiday
+        const leaves = await LeaveRequest.find({ isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+
+        for (let i = 0; i < leaves.length; i++) {
+            let leave = leaves[i];
+
+            let emp = await Employee.findOne({ leaveRequest: leave._id })
+            let arr = [];
+            emp.leaveRequest.filter((id1) => {
+                if (id1.toString() !== leave._id.toString()) {
+                    arr.push(id1);
+                }
+            })
+            await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration }, $set: { leaveRequest: arr } })
+            await LeaveRequest.deleteOne({ _id: leave._id })
+        }
+
+        const check = await Holiday.find({ name: name, date: new Date(date) }).collation({ locale: "en", strength: 1 })
+
+        if (check.length !== 0) {
+            res.status(400);
+            return res.json({ message: "Cannot add same Holiday again on same date..." })
+        }
+
+        // Can apply only after today date but not on today date
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+
+        const newDate = new Date(date);
+
+        if (newDate <= today) {
+            return res.status(400).json({ message: "Cannot apply holiday on past days and today..." })
         }
 
         const newHoliday = await Holiday.create(data)
@@ -88,17 +115,10 @@ const editPublicHoliday = async (req, res) => {
         let name = data.name;
         let date = data.date;
 
-        const check = await Holiday.find({ name: name, date: new Date(date) }).collation({ locale: "en", strength: 1 })
+        const holidayById = await Holiday.findById(id);
 
-        if (check.length !== 0) {
-            res.status(200);
-            return res.json({ message: "No new updates are made..." })
-        }
-
-        const holiday = await Holiday.findById(id);
-        if (!holiday) {
-            res.status(400);
-            return res.json({ message: "Please provide a valid Holiday id..." })
+        if (!holidayById) {
+            return res.status(400).json({ message: "Please provide a valid id..." })
         }
 
         if (name !== undefined) {
@@ -121,17 +141,36 @@ const editPublicHoliday = async (req, res) => {
                 res.status(400);
                 return res.json({ message: "If you want to update date Please don't provide null..." })
             }
+            else {
+                const today = new Date();
+                today.setUTCHours(0, 0, 0, 0);
+
+                const newDate = new Date(date);
+
+                if (newDate <= today) {
+                    return res.status(400).json({ message: "Cannot apply holiday on past days and today..." })
+                }
+            }
+        }
+        const check = await Holiday.find({ _id: { $ne: new ObjectId(id) }, name: (name ? name : holidayById.name), date: (date ? new Date(date) : holidayById.date) }).collation({ locale: "en", strength: 1 })
+
+        if (check.length !== 0) {
+            res.status(400);
+            return res.json({ message: "Same name Holiday already exists..." })
         }
 
-        await Holiday.updateOne({ _id: new ObjectId(id) }, { $set: { name: name, date: date } })
+        const updateCheck = await Holiday.updateOne({ _id: new ObjectId(id) }, { $set: { name: name ? name : holidayById.name, date: date ? date : holidayById.date } })
 
+        if (updateCheck.modifiedCount === 0) {
+            return res.status(200).json({ message: "No updates are made..." })
+        }
         const updatedHoliday = await Holiday.findById(id);
 
         res.status(200);
         return res.json({ updatedHoliday: updatedHoliday, message: "Public Holiday is updated successfully..." })
     }
     catch (error) {
-        console.log(error.message);
+        console.log(error);
         res.status(500);
         return res.json({ message: "Error Occurred while updating the document..." })
     }
@@ -140,26 +179,50 @@ const editPublicHoliday = async (req, res) => {
 const approveRequest = async (req, res) => {
 
     try {
-
         const id = req.params.id;
-        // Case 1 - HR wants to approve a leave request
 
-        // Step 1 - get an unapproved request
-        const leaveReq = await LeaveRequest.findById(id);
+        if (req.role === "HR") {
+            // Case 1 - HR wants to approve a leave request
 
-        // Step 2 - approve it by marking it to true
-        await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
+            // Step 1 - get an unapproved request
+            const leaveReq = await LeaveRequest.findById(id);
 
-        // Step 3 - update balance
-        const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
-        console.log(document);
+            if (leaveReq.role !== "employee") {
+                return res.status(400).json({ message: "Cannot approve leave request of other than employees..." })
+            }
 
-        const sub = document.leaveBalance - leaveReq.duration;
+            // Step 2 - approve it by marking it to true
+            await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
 
-        console.log(sub);
+            // Step 3 - update balance
+            const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+            console.log(document);
 
-        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
+            const sub = document.leaveBalance - leaveReq.duration;
 
+            console.log(sub);
+
+            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
+        }
+        else if (req.role === "Management") {
+
+            const leaveReq = await LeaveRequest.findById(id);
+
+            if (leaveReq.role !== "HR") {
+                return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." })
+            }
+
+            await LeaveRequest.updateOne({ _id: new ObjectId(id) }, { $set: { isApprove: true } })
+
+            const document = await Employee.findOne({ leaveRequest: new ObjectId(id) });
+            console.log(document);
+
+            const sub = document.leaveBalance - leaveReq.duration;
+
+            console.log(sub);
+
+            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveBalance: sub } })
+        }
         res.status(200)
         return res.json({ message: "Leave Request approved successfully..." })
     }
@@ -173,27 +236,51 @@ const approveRequest = async (req, res) => {
 const rejectRequest = async (req, res) => {
 
     try {
-
         const id = req.params.id;
-        // Case 2 - HR wants to disapprove a leave request
 
-        // Step 1 - get an unapproved request
-        const leaveReq = await LeaveRequest.findById(id);
+        if (req.role === "HR") {
 
-        // Step 2 - remove it from db
-        await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
+            const leaveReq = await LeaveRequest.findById(id);
 
-        // Update leaveRequest array of Employee
-        const doc = await Employee.findOne({ leaveRequest: new ObjectId(id) })
-
-        let arr = [];
-        doc.leaveRequest.forEach((id1) => {
-            if (id1.toString() !== id) {
-                arr.push(id1)
+            if (leaveReq.role !== "employee") {
+                return res.status(400).json({ message: "Cannot approve leave request of other than employees..." })
             }
-        })
 
-        await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveRequest: arr } })
+            await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
+
+            const doc = await Employee.findOne({ leaveRequest: new ObjectId(id) })
+
+            let arr = [];
+            doc.leaveRequest.forEach((id1) => {
+                if (id1.toString() !== id) {
+                    arr.push(id1)
+                }
+            })
+
+            await Employee.updateOne({ leaveRequest: new ObjectId(id) }, { $set: { leaveRequest: arr } })
+        }
+        else if (req.role === "Management") {
+            const leaveReq = await LeaveRequest.findById(id);
+
+            if (leaveReq.role !== "HR") {
+                return res.status(400).json({ message: "Cannot approve leave request of other than HRs..." })
+            }
+
+            await LeaveRequest.deleteOne({ _id: new ObjectId(id) })
+
+            const doc = await Employee.findOne({ leaveRequest: new ObjectId(id), role: "HR" })
+            console.log(doc);
+
+            let arr = [];
+            doc.leaveRequest.forEach((id1) => {
+                if (id1.toString() !== id) {
+                    arr.push(id1)
+                }
+            })
+            console.log(arr);
+
+            await Employee.updateOne({ leaveRequest: new ObjectId(id), role: "HR" }, { $set: { leaveRequest: arr } })
+        }
 
         res.status(200)
         return res.json({ message: "Leave Request Rejected successfully..." })
@@ -223,7 +310,7 @@ const publicHolidays = async (req, res) => {
 const getAllEmployeesDetails = async (req, res) => {
 
     try {
-        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1 }).sort({ role: 1 })
+        let docs = await Employee.find({ $or: [{ role: "HR" }, { role: "employee" }] }, { name: 1, role: 1, email: 1 }).sort({ role: 1 })
 
         res.status(200);
         return res.json({ data: docs, message: "All Employees data Fetched successfully..." })
