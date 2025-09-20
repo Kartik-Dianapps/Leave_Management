@@ -9,10 +9,10 @@ const pastLeave = async (req, res) => {
         today.setUTCHours(0, 0, 0, 0);
 
         // Step 1 - Fetch all leave request of HR using LeaveRequest
-        const emp = await LeaveRequest.find({ role: "HR", endDate: { $lt: today } });
+        const leaveReq = await LeaveRequest.find({ role: "HR", endDate: { $lt: today } });
 
         res.status(200)
-        return res.json({ pastLeaveRequests: emp, message: "Past Leave Requests fetched successfully..." })
+        return res.json({ pastLeaveRequests: leaveReq, message: "Past Leave Requests fetched successfully..." })
 
     }
     catch (error) {
@@ -28,7 +28,7 @@ const currentLeaveRequests = async (req, res) => {
         let today = new Date();
         today.setUTCHours(0, 0, 0, 0);
 
-        const currentLeaves = await LeaveRequest.find({ role: "HR", isApprove: false, isRejected: false, $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today }, endDate: { $gt: today } }] });
+        const currentLeaves = await LeaveRequest.find({ role: "HR", isApprove: false, isRejected: false, $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today } }] });
         res.status(200);
         return res.json({ currentLeaveReq: currentLeaves, message: "Current Leave Requests" })
 

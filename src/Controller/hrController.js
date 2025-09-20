@@ -115,7 +115,7 @@ const editPublicHoliday = async (req, res) => {
         const holidayById = await Holiday.findById(id);
 
         if (!holidayById) {
-            return res.status(400).json({ message: "Please provide a valid id..." })
+            return res.status(404).json({ message: "Please provide a valid id..." })
         }
 
         if (name !== undefined) {
@@ -257,15 +257,6 @@ const rejectRequest = async (req, res) => {
             );
         }
 
-        // Remove from employee's leaveRequest array
-        const updatedArr = employee.leaveRequest.filter(
-            (rid) => rid.toString() !== id
-        );
-        await Employee.updateOne(
-            { _id: employee._id },
-            { $set: { leaveRequest: updatedArr } }
-        );
-
         await LeaveRequest.updateOne(
             { _id: new ObjectId(id) },
             { $set: { isApprove: false, isRejected: true } }
@@ -278,19 +269,4 @@ const rejectRequest = async (req, res) => {
     }
 };
 
-const publicHolidays = async (req, res) => {
-
-    try {
-        const holidays = await Holiday.find();
-        res.status(200);
-        return res.json({ Holidays: holidays, message: "Public Holidays fetched Successfully..." })
-
-    }
-    catch (error) {
-        console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error while fetching all public holidays" })
-    }
-}
-
-module.exports = { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest, publicHolidays }
+module.exports = { getEmployee, currentLeavesRequests, addPublicHoliday, editPublicHoliday, approveRequest, rejectRequest }
