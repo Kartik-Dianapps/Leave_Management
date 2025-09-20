@@ -348,7 +348,7 @@ const currentLeave = async (req, res) => {
 const publicHolidays = async (req, res) => {
 
     try {
-        const holidays = await Holiday.find();
+        const holidays = await Holiday.find({}, { _id: 0 });
         res.status(200);
         return res.json({ Holidays: holidays, message: "Public Holidays fetched Successfully..." })
 

@@ -16,10 +16,10 @@ router.post("/logout", verifyToken(), logout)
 router.post("/applyLeave", verifyToken(["employee", "HR"]), applyLeave)
 
 // to fetch past leave request
-router.get("/pastLeave", verifyToken("employee"), pastLeave)
+router.get("/pastLeave", verifyToken(["employee", "HR"]), pastLeave)
 
 // to fetch current leave request
-router.get("/currentLeave", verifyToken("employee"), currentLeave)
+router.get("/currentLeave", verifyToken(["employee", "HR"]), currentLeave)
 
 // to fetch all public holidays
 router.get("/publicHolidays", verifyToken(), publicHolidays)
