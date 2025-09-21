@@ -17,23 +17,17 @@ const verifyToken = (role = ["employee", "HR", "Management"]) => {
 
             console.log(decoded);
 
-            if (Array.isArray(role) && role.includes(decoded.role)) {
-                // what if user is already logout then
-                const emp = await Session.findOne({ userId: decoded._id, token: token })
-                if (!emp) {
-                    return res.status(400).json({ message: "Employee has already logged out with this token..." })
-                }
+            // check for when employee is already logged out
+            const emp = await Session.findOne({ userId: decoded._id, token: token })
+            if (!emp) {
+                return res.status(401).json({ message: "Employee has already logged out with this token..." })
             }
-            else if (Array.isArray(role) && !role.includes(decoded.role)) {
+
+            if (Array.isArray(role) && !role.includes(decoded.role)) {
                 return res.status(403).json({ message: "Does not have access to this resource..." })
             }
             else {
-                const emp = await Session.findOne({ userId: decoded._id, token: token })
-                if (!emp) {
-                    return res.status(400).json({ message: "Employee has already logged out with this token..." })
-                }
-
-                if (decoded.role !== role) {
+                if (!Array.isArray(role) && decoded.role !== role) {
                     return res.status(403).json({ message: "Does not have access to this resource..." })
                 }
             }
@@ -44,10 +38,10 @@ const verifyToken = (role = ["employee", "HR", "Management"]) => {
         }
         catch (error) {
             console.log(error.message);
-            if (error.name === "TokenExpiredToken") {
+            if (error.name === "TokenExpiredError") {
                 return res.status(400).json({ message: "Provided Token has Expired..." })
             }
-            res.status(400).json({ message: "Invalid Token..." })
+            res.status(401).json({ message: "Invalid Token..." })
         }
     }
 }

@@ -262,15 +262,49 @@ const applyLeave = async (req, res) => {
 
             let leave = leaves[i];
 
-            if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
+            if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === true) {
                 return res.status(400).json({ message: "Leave Request for this day is already applied..." })
             }
-            else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() || leave.endDate.toDateString() === new Date(data.endDate).toDateString()) {
+            else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === false && leave.isRejected === false) {
+                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
+            }
+            else if ((leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.isApprove === true) || (leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === true)) {
+                return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
+            }
+            else if ((leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.isApprove === false && leave.isRejected === false) || (leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === false && leave.isRejected === false)) {
                 return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
             }
         }
 
         data.role = req.role;
+
+        const currentMonth = new Date(data.startDate).getMonth();
+        const currentYear = new Date(data.startDate).getFullYear();
+
+        let singleDayCount = 0;
+
+        for (let i = 0; i < leaves.length; i++) {
+            const leave = leaves[i];
+            const leaveStart = new Date(leave.startDate);
+
+            // Only consider leaves in the same month and year
+            if (leaveStart.getMonth() === currentMonth && leaveStart.getFullYear() === currentYear) {
+
+                // 2-day leave request
+                if (leave.duration === 2 && (leave.isApprove === false && leave.isRejected === false)) {
+                    return res.status(400).json({ message: "Cannot apply leave as there is a pending 2-day leave request..." });
+                }
+
+                // Single-day leave request
+                if (leave.duration === 1 && (leave.isApprove === true || (leave.isApprove === false && leave.isRejected === false))) {
+                    singleDayCount++;
+                }
+            }
+        }
+
+        if (data.duration === 1 && singleDayCount === 2) {
+            return res.status(400).json({ message: "Cannot apply more than 2 single-day leaves in this month..." });
+        }
 
         // Step 1 - Create a leave request 
         const leaveReq = await LeaveRequest.create(data);
