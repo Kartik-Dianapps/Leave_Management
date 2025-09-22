@@ -3,41 +3,65 @@ const { LeaveRequest } = require("../Models/LeaveRequest.js")
 const { ObjectId } = require("mongodb")
 
 const pastLeave = async (req, res) => {
-
     try {
-        let today = new Date();
+        const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
 
-        // Step 1 - Fetch all leave request of HR using LeaveRequest
-        const leaveReq = await LeaveRequest.find({ role: "HR", endDate: { $lt: today } });
+        const employees = await Employee.find({ role: "HR" }).populate('leaveRequest');
 
-        res.status(200)
-        return res.json({ pastLeaveRequests: leaveReq, message: "Past Leave Requests fetched successfully..." })
+        let pastLeaves = [];
 
-    }
-    catch (error) {
+        employees.forEach(emp => {
+            emp.leaveRequest.forEach(lr => {
+                const leaveEnd = new Date(lr.endDate);
+                leaveEnd.setUTCHours(0, 0, 0, 0);
+
+                if (leaveEnd < today) {
+                    pastLeaves.push({
+                        employee: { name: emp.name, role: emp.role, leaveBalance: emp.leaveBalance },
+                        leave: lr
+                    });
+                }
+            });
+        });
+
+        return res.status(200).json({ pastLeaveRequests: pastLeaves, message: "Past HR Leave Requests fetched successfully..." });
+    } catch (error) {
         console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error while fetching all past leave requests..." })
+        return res.status(500).json({ message: "Error while fetching past HR leave requests..." });
     }
-}
+};
 
 const currentLeaveRequests = async (req, res) => {
-
     try {
-        let today = new Date();
+        const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
 
-        const currentLeaves = await LeaveRequest.find({ role: "HR", isApprove: false, isRejected: false, $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today } }] });
-        res.status(200);
-        return res.json({ currentLeaveReq: currentLeaves, message: "Current Leave Requests" })
+        const employees = await Employee.find({ role: "HR" }).populate('leaveRequest');
 
-    }
-    catch (error) {
+        let currentLeaves = [];
+
+        employees.forEach(emp => {
+            emp.leaveRequest.forEach(lr => {
+                const leaveStart = new Date(lr.startDate);
+                const leaveEnd = new Date(lr.endDate);
+                leaveStart.setUTCHours(0, 0, 0, 0);
+                leaveEnd.setUTCHours(0, 0, 0, 0);
+
+                if (!lr.isApprove && !lr.isRejected && ((leaveStart <= today && leaveEnd >= today) || leaveStart > today)) {
+                    currentLeaves.push({
+                        employee: { name: emp.name, role: emp.role, leaveBalance: emp.leaveBalance },
+                        leave: lr
+                    });
+                }
+            });
+        });
+
+        return res.status(200).json({ currentLeaveReq: currentLeaves, message: "Current HR Leave Requests fetched successfully..." });
+    } catch (error) {
         console.log(error.message);
-        res.status(500);
-        return res.json({ message: "Error Occurred while fetching the current leaves..." })
+        return res.status(500).json({ message: "Error while fetching current HR leave requests..." });
     }
-}
+};
 
 module.exports = { pastLeave, currentLeaveRequests }

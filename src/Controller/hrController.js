@@ -25,22 +25,40 @@ const getEmployee = async (req, res) => {
 }
 
 const currentLeavesRequests = async (req, res) => {
-
     try {
         const today = new Date();
-        today.setUTCHours(0, 0, 0, 0)
+        today.setUTCHours(0, 0, 0, 0);
 
-        const leaveRequests = await LeaveRequest.find({ isApprove: false, isRejected: false, role: "employee", $or: [{ startDate: { $lte: today }, endDate: { $gte: today } }, { startDate: { $gt: today } }] })
-        // HR will also get the leave requests of other HRs!
-        res.status(200);
-        return res.json({ currentLeaveReq: leaveRequests, message: "Current Leave Requests" })
+        const employees = await Employee.find({ role: "employee" }).populate('leaveRequest');
 
+        let currentLeaves = [];
+
+        employees.forEach(emp => {
+            emp.leaveRequest.forEach(lr => {
+                const leaveStart = new Date(lr.startDate);
+                const leaveEnd = new Date(lr.endDate);
+                leaveStart.setUTCHours(0, 0, 0, 0);
+                leaveEnd.setUTCHours(0, 0, 0, 0);
+
+                if (!lr.isApprove && !lr.isRejected && ((leaveStart <= today && leaveEnd >= today) || leaveStart > today)) {
+                    currentLeaves.push({
+                        employee: {
+                            name: emp.name,
+                            role: emp.role,
+                            leaveBalance: emp.leaveBalance
+                        },
+                        leave: lr
+                    });
+                }
+            });
+        });
+
+        return res.status(200).json({ currentLeaveReq: currentLeaves, message: "Current Employee Leave Requests fetched successfully..." });
+    } catch (error) {
+        console.log(error.message);
+        return res.status(500).json({ message: "Error occurred while fetching current employee leave requests..." });
     }
-    catch (error) {
-        res.status(500);
-        return res.json({ message: "Error occurred while fetching current leave Requests..." })
-    }
-}
+};
 
 const addPublicHoliday = async (req, res) => {
     // I'm able to create holiday for a past leave 
@@ -61,12 +79,10 @@ const addPublicHoliday = async (req, res) => {
         }
 
         // check for if there is a leave request applied on that holiday
-        const leaves = await LeaveRequest.find({ role: "employee", isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+        const leaves = await LeaveRequest.find({ isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
 
         for (let i = 0; i < leaves.length; i++) {
             let leave = leaves[i];
-
-            let emp = await Employee.findOne({ leaveRequest: leave._id })
 
             await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration } })
             await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })
@@ -88,6 +104,8 @@ const addPublicHoliday = async (req, res) => {
         if (newDate <= today) {
             return res.status(400).json({ message: "Cannot apply holiday on past days and today..." })
         }
+
+        data.createdBy = req.userId;
 
         const newHoliday = await Holiday.create(data)
 
@@ -161,12 +179,10 @@ const editPublicHoliday = async (req, res) => {
         }
         if (date) {
             // check if an employee already placed a leave on updated date then
-            const leaves = await LeaveRequest.find({ role: "employee", isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+            const leaves = await LeaveRequest.find({ isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
 
             for (let i = 0; i < leaves.length; i++) {
                 let leave = leaves[i];
-
-                let emp = await Employee.findOne({ leaveRequest: leave._id })
 
                 await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration } })
                 await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })

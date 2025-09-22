@@ -7,6 +7,10 @@ const holidaySchema = new mongoose.Schema({
     date: {
         type: Date,
         required: true
+    },
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Employee"
     }
 })
 

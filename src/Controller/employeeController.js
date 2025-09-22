@@ -201,7 +201,6 @@ const applyLeave = async (req, res) => {
 
         data.comment = data.comment.trim();
 
-
         if (data.startDate === null || data.startDate === undefined || data.startDate === "") {
             res.status(400);
             return res.json({ message: "Start date cannot be null or undefined or empty string..." })
@@ -212,114 +211,78 @@ const applyLeave = async (req, res) => {
             return res.json({ message: "End Date cannot be null or undefined or empty string..." })
         }
 
-        let today = new Date();
-        today.setUTCHours(0, 0, 0, 0)
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        startDate.setUTCHours(0, 0, 0, 0);
+        endDate.setUTCHours(0, 0, 0, 0);
 
-        if (new Date(data.startDate) < today || new Date(data.endDate) < today) {
-            return res.status(400).json({ message: "Cannot Apply Leave for past days..." })
-        } // End Date must be greater than Start Date !
+        if (startDate < today || endDate < today) {
+            return res.status(400).json({ message: "Cannot apply leave for past days..." });
+        }
 
-        if (new Date(data.startDate) > new Date(data.endDate)) {
-            return res.status(400).json({ message: "Start date cannot be greater than end Date..." })
+        if (startDate > endDate) {
+            return res.status(400).json({ message: "Start date cannot be greater than end Date..." });
         }
 
         const holidays = await Holiday.find();
-        let arr = [];
-        holidays.forEach((holiday) => {
-            arr.push(holiday.date.toDateString());
-        })
+        const holidayDates = new Set(holidays.map(h => new Date(h.date).toDateString()));
 
-        // check for an employee apply for leave on public holiday 
-        const start = new Date(data.startDate).toDateString()
-        const end = new Date(data.endDate).toDateString()
+        // Check full range for weekends and holidays
+        let current = new Date(startDate);
+        let dayCount = 0;
+        while (current <= endDate) {
+            const dayStr = current.toDateString();
+            const dayOfWeek = current.getDay(); // 0=Sun, 6=Sat
 
-        if (arr.includes(start) || arr.includes(end)) {
-            res.status(400);
-            return res.json({ message: "Cannot apply for leave on public holiday..." })
-        }
-
-        // check for week days 
-        if ((start.substring(0, 3) === 'Sun' || start.substring(0, 3) === 'Sat') || (end.substring(0, 3) === 'Sun' || end.substring(0, 3) === 'Sat')) {
-            res.status(400);
-            return res.json({ message: "Cannot apply for leave on week days..." })
-        }
-        else {
-            let start = new Date(data.startDate);
-            let end = new Date(data.endDate);
-
-            let diff = Math.floor((end - start) / (1000 * 60 * 60 * 24)) + 1;
-            console.log(diff);
-
-
-            if (diff !== data.duration) {
-                return res.status(400).json({ message: 'Date range is not valid acc to duration...' })
+            if (holidayDates.has(dayStr)) {
+                return res.status(400).json({ message: "Cannot apply leave on public holiday..." });
             }
+
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                return res.status(400).json({ message: "Cannot apply leave on weekends..." });
+            }
+
+            dayCount++;
+            current.setDate(current.getDate() + 1);
         }
 
+        if (dayCount !== data.duration) {
+            return res.status(400).json({ message: "Date range is not valid according to duration..." });
+        }
+
+        // Overlap check with existing leaves
         const leaves = employee.leaveRequest;
-        // Check for leave dates
         for (let i = 0; i < leaves.length; i++) {
+            const leave = leaves[i];
+            const lStart = new Date(leave.startDate);
+            const lEnd = new Date(leave.endDate);
+            lStart.setUTCHours(0, 0, 0, 0);
+            lEnd.setUTCHours(0, 0, 0, 0);
 
-            let leave = leaves[i];
+            const overlaps = startDate <= lEnd && endDate >= lStart && (leave.isApprove === true || (leave.isRejected === false && leave.isApprove === false));
 
-            if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === true) {
-                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
-            }
-            else if (leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === false && leave.isRejected === false) {
-                return res.status(400).json({ message: "Leave Request for this day is already applied..." })
-            }
-            else if ((leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.isApprove === true) || (leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === true)) {
-                return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
-            }
-            else if ((leave.startDate.toDateString() === new Date(data.startDate).toDateString() && leave.isApprove === false && leave.isRejected === false) || (leave.endDate.toDateString() === new Date(data.endDate).toDateString() && leave.isApprove === false && leave.isRejected === false)) {
-                return res.status(400).json({ message: "Leave Request for this day is already applied in range of existing leave Requests..." })
+            if (overlaps) {
+                return res.status(400).json({ message: "Leave applied for this date or range of dates..." });
             }
         }
 
         data.role = req.role;
 
-        const currentMonth = new Date(data.startDate).getMonth();
-        const currentYear = new Date(data.startDate).getFullYear();
-
-        let singleDayCount = 0;
-
-        for (let i = 0; i < leaves.length; i++) {
-            const leave = leaves[i];
-            const leaveStart = new Date(leave.startDate);
-
-            if (leaveStart.getMonth() === currentMonth && leaveStart.getFullYear() === currentYear) {
-
-                // 2-day leave request
-                if (leave.duration === 2 && (leave.isApprove === false && leave.isRejected === false)) {
-                    return res.status(400).json({ message: "Cannot apply leave as there is a pending 2-day leave request..." });
-                }
-
-                // Single-day leave request
-                if (leave.duration === 1 && (leave.isApprove === true || (leave.isApprove === false && leave.isRejected === false))) {
-                    singleDayCount++;
-                }
-            }
-        }
-
-        if (data.duration === 1 && singleDayCount === 2) {
-            return res.status(400).json({ message: "Cannot apply more than 2 single-day leaves in this month..." });
-        }
-
-        // Step 1 - Create a leave request 
+        // Step 1 - Create leave request
         const leaveReq = await LeaveRequest.create(data);
 
-        // Step 2 - Update the employee Leave Request array
-        const emp = await Employee.updateOne(
+        // Step 2 - Update employee leaveRequest array
+        await Employee.updateOne(
             { _id: req.userId },
             { $push: { leaveRequest: leaveReq._id } }
         );
 
-        res.status(200);
-        return res.json({ Leave_request: leaveReq, message: "Leave Request Raised..." })
-    }
-    catch (error) {
+        return res.status(200).json({ Leave_request: leaveReq, message: "Leave Request Raised..." });
+    } catch (error) {
         console.log(error.message);
-        return res.status(500).json({ message: "Leave request failed to create..." })
+        return res.status(500).json({ message: "Leave request failed to create..." });
     }
 }
 
