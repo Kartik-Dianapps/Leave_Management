@@ -61,16 +61,14 @@ const addPublicHoliday = async (req, res) => {
         }
 
         // check for if there is a leave request applied on that holiday
-        const leaves = await LeaveRequest.find({ isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+        const leaves = await LeaveRequest.find({ role: "employee", isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
 
         for (let i = 0; i < leaves.length; i++) {
             let leave = leaves[i];
 
             let emp = await Employee.findOne({ leaveRequest: leave._id })
-            let arr;
-            arr = emp.leaveRequest.filter(id1 => id1.toString() !== leave._id.toString());
 
-            await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration }, $set: { leaveRequest: arr } })
+            await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration } })
             await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })
         }
 
@@ -160,6 +158,19 @@ const editPublicHoliday = async (req, res) => {
 
         if (updateCheck.modifiedCount === 0) {
             return res.status(200).json({ message: "No updates are made..." })
+        }
+        if (date) {
+            // check if an employee already placed a leave on updated date then
+            const leaves = await LeaveRequest.find({ role: "employee", isApprove: true, startDate: { $lte: new Date(date) }, endDate: { $gte: new Date(date) } })
+
+            for (let i = 0; i < leaves.length; i++) {
+                let leave = leaves[i];
+
+                let emp = await Employee.findOne({ leaveRequest: leave._id })
+
+                await Employee.updateOne({ leaveRequest: leave._id }, { $inc: { leaveBalance: leave.duration } })
+                await LeaveRequest.updateOne({ _id: leave._id }, { $set: { isRejected: true, isApprove: false } })
+            }
         }
         const updatedHoliday = await Holiday.findById(id);
 

@@ -287,7 +287,6 @@ const applyLeave = async (req, res) => {
             const leave = leaves[i];
             const leaveStart = new Date(leave.startDate);
 
-            // Only consider leaves in the same month and year
             if (leaveStart.getMonth() === currentMonth && leaveStart.getFullYear() === currentYear) {
 
                 // 2-day leave request
