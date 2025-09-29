@@ -325,7 +325,7 @@ const currentLeave = async (req, res) => {
         let arr = [];
 
         arr = employee.leaveRequest.filter(
-            doc => (doc.startDate <= today && doc.endDate >= today) || (doc.startDate > today && doc.endDate > today)
+            doc => (doc.startDate <= today && doc.endDate >= today) || (doc.startDate > today)
         );
 
         console.log(arr);

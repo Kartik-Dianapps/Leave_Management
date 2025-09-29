@@ -8,15 +8,15 @@ const getEmployee = async (req, res) => {
     try {
         const id = req.params.id;
 
-        const emp = await Employee.findById(id).populate('leaveRequest')
+        const employee = await Employee.findById(id).populate('leaveRequest')
 
-        if (!emp) {
+        if (!employee) {
             res.status(400);
             return res.json({ message: "Employee not found..." })
         }
 
         res.status(200);
-        return res.json({ Employee: { name: emp.name, email: emp.email, role: emp.role, phone: emp.phone, leaveBalance: emp.leaveBalance, leaveRequest: emp.leaveRequest }, message: "Employee Details fetched Successfully..." })
+        return res.json({ Employee: { name: employee.name, email: employee.email, role: employee.role, phone: employee.phone, leaveBalance: employee.leaveBalance, leaveRequest: employee.leaveRequest }, message: "Employee Details fetched Successfully..." })
     }
     catch (error) {
         console.log(error.message);
@@ -102,14 +102,14 @@ const addPublicHoliday = async (req, res) => {
         const newDate = new Date(date);
 
         if (newDate <= today) {
-            return res.status(400).json({ message: "Cannot apply holiday on past days and today..." })
+            return res.status(400).json({ message: "Cannot create holiday on past days and today..." })
         }
 
         data.createdBy = req.userId;
 
         const newHoliday = await Holiday.create(data)
 
-        res.status(200);
+        res.status(201);
         return res.json({ newHoliday: newHoliday, message: "Public Holiday is created successfully..." })
     }
     catch (error) {
@@ -161,7 +161,7 @@ const editPublicHoliday = async (req, res) => {
                 const newDate = new Date(date);
 
                 if (newDate <= today) {
-                    return res.status(400).json({ message: "Cannot apply holiday on past days and today..." })
+                    return res.status(400).json({ message: "Cannot create holiday on past days and today..." })
                 }
             }
         }
