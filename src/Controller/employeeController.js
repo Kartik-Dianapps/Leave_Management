@@ -36,7 +36,7 @@ const register = async (req, res) => {
             return res.json({ message: "Employee exists with this email..." })
         }
 
-        const emailRegex = /^[a-zA-Z0-9]{3,}@[a-zA-Z]+\.[a-zA-Z]{2,}$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]{3,}@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
         const emailCheck = emailRegex.test(data.email)
 
@@ -116,31 +116,31 @@ const login = async (req, res) => {
         }
 
         // email check
-        const emp = await Employee.findOne({ email: data.email })
-        if (!emp) {
+        const employee = await Employee.findOne({ email: data.email })
+        if (!employee) {
             res.status(400);
             return res.json({ message: "Please enter correct email..." })
         }
 
         // password check 
-        const pswdCheck = await bcrypt.compare(data.password, emp.password);
+        const pswdCheck = await bcrypt.compare(data.password, employee.password);
         if (!pswdCheck) {
             res.status(400);
             return res.json({ message: "Please enter correct password..." })
         }
 
-        const token = jwt.sign({ _id: emp._id, role: emp.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
+        const token = jwt.sign({ _id: employee._id, role: employee.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
 
-        const existingSession = await Session.findOne({ userId: emp._id })
+        const existingSession = await Session.findOne({ userId: employee._id })
 
         if (existingSession) {
-            await Session.deleteOne({ userId: emp._id })
+            await Session.deleteOne({ userId: employee._id })
         }
 
-        await Session.create({ userId: emp._id, token: token, tokenExpiry: new Date(Date.now() + (1 * 24 * 60 * 60 * 1000)) })
+        await Session.create({ userId: employee._id, token: token, tokenExpiry: new Date(Date.now() + (1 * 24 * 60 * 60 * 1000)) })
 
         res.status(200);
-        return res.json({ message: "Login Successful...", name: emp.name, email: emp.email, token: token })
+        return res.json({ message: "Login Successful...", name: employee.name, email: employee.email, token: token })
 
     }
     catch (error) {
@@ -290,15 +290,15 @@ const pastLeave = async (req, res) => {
 
     try {
         const id = req.userId;
-        const emp = await Employee.findById(id).populate('leaveRequest')
-        console.log(emp);
+        const employee = await Employee.findById(id).populate('leaveRequest')
+        console.log(employee);
 
         let today = new Date();
         today.setUTCHours(0, 0, 0, 0)
 
         let arr = [];
 
-        arr = emp.leaveRequest.filter(doc => doc.endDate < today);
+        arr = employee.leaveRequest.filter(doc => doc.endDate < today);
 
         console.log(arr);
 
@@ -317,14 +317,14 @@ const currentLeave = async (req, res) => {
 
     try {
         const id = req.userId;
-        const emp = await Employee.findById(id).populate('leaveRequest')
+        const employee = await Employee.findById(id).populate('leaveRequest')
 
         let today = new Date();
         today.setUTCHours(0, 0, 0, 0)
 
         let arr = [];
 
-        arr = emp.leaveRequest.filter(
+        arr = employee.leaveRequest.filter(
             doc => (doc.startDate <= today && doc.endDate >= today) || (doc.startDate > today && doc.endDate > today)
         );
 
@@ -371,4 +371,13 @@ const getAllEmployeesDetails = async (req, res) => {
     }
 }
 
-module.exports = { register, login, logout, applyLeave, pastLeave, currentLeave, publicHolidays, getAllEmployeesDetails }
+module.exports = {
+    register,
+    login,
+    logout,
+    applyLeave,
+    pastLeave,
+    currentLeave,
+    publicHolidays,
+    getAllEmployeesDetails
+}
